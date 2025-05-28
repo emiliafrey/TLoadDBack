@@ -3,6 +3,35 @@
 {% block content %}
 
 <div id="jspsych-target"></div>
+<div id="debug-accuracy" style="
+  position: fixed;
+  top: 10px;
+  right: 20px;
+  background-color: rgba(255,255,255,0.9);
+  padding: 8px 12px;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+  font-weight: bold;
+  color: darkred;
+  z-index: 9999;
+">
+    Debug Accuracy: (waiting...)
+</div>
+
+<div id="debug-feedback" style="
+  position: fixed;
+  top: 120px;
+  right: 20px;
+  background-color: rgba(255,255,255,0.9);
+  padding: 8px 12px;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+  font-weight: bold;
+  color: navy;
+  z-index: 9999;
+">
+    Debug Feedback: (waiting...)
+</div>
 
 <script src="https://unpkg.com/jspsych@7.3.0"></script>
 <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
@@ -18,7 +47,7 @@
     });
 
     const stimulusTime = parseInt('{{ stimulus_time}}');
-
+    const seriesData = JSON.parse('{{ series_data|safe }}');
 
     const instruction_images = [
         '/static/images/pretest/General_Instructions_REMADE.bmp',
@@ -27,70 +56,84 @@
         '/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp'
     ];
 
-
     // Show each instruction image, wait for 'y' key to continue
     const generalInstructions = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/General_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        // prompt: "<p>Press 'Y' to continue</p>",
         choices: ['y']
     };
 
     const digitsInstructions = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        // prompt: "<p>Press 'Y' to continue</p>",
         choices: ['y']
     };
 
     const lettersInstructions = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        // prompt: "<p>Press 'Y' to continue</p>",
         choices: ['y']
     };
 
     const lettersDigitsInstructions = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        // prompt: "<p>Press 'Y' to continue</p>",
         choices: ['y']
     };
 
     const stimulusHTML = content => `
-  <div style="
-    width: 100%;
-    height: 300px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: black;
-    font-size: 72px;
-    color: white;
-  ">
-    ${content}
-  </div>
-`;
+      <div style="
+        width: 100%;
+        height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: black;
+        font-size: 72px;
+        color: white;
+      ">
+        ${content}
+      </div>
+    `;
+
+    const blankScreen = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: stimulusHTML(''),
+        choices: "NO_KEYS",
+        trial_duration: 100  // 100ms blank
+    };
+
+    function makeStimulus(content, choices, correctResponse, trialType) {
+        return {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: stimulusHTML(content),
+            choices: choices,
+            response_ends_trial: false,
+            trial_duration: stimulusTime,
+            post_trial_gap: 100,
+            data: {
+                trial_type: trialType,
+                correct_response: correctResponse
+            },
+            on_finish: function (data) {
+                data.correct = data.response === data.correct_response;
+                updateDebugAccuracy();
+                updateDebugFeedback(data.correct);
+            }
+        };
+    }
 
 
-    const digitTrainingStimuli = ['9', '1', '2', '8', '4', '6', '7', '8', '9', '3', '1', '6'];
+    const digitTrainingStimuli = ['9', '1', '2',
+        //'8', '4', '6', '7', '8', '9', '3', '1',
+        '6'];
     const digitTraining = [];
     digitTrainingStimuli.forEach(num => {
-        // Show digit
-        digitTraining.push({
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: stimulusHTML(num),
-            choices: "NO_KEYS",
-            trial_duration: stimulusTime
-        });
-
-        // Add blank screen
-        digitTraining.push({
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: stimulusHTML(''),
-            choices: "NO_KEYS",
-            trial_duration: 100  // 100ms blank
-        });
+        const correctKey = num % 2 === 0 ? '2' : '3';
+        digitTraining.push(
+            makeStimulus(num, ['2', '3'], correctKey, 'digit')
+        );
+        digitTraining.push(blankScreen);
     });
 
     const digitTrainingDone = {
@@ -99,26 +142,22 @@
         choices: "ALL_KEYS"
     };
 
-    const letterTrainingStimuli = ['E', 'P', 'P', 'L', 'A', 'P', 'L', 'A', 'A', 'N', 'T', 'N', 'N', 'N', 'U', 'T', 'T', 'P', 'R', 'R'];
+    const letterTrainingStimuli = ['E', 'P', 'P',
+        // 'L', 'A', 'P', 'L', 'A', 'A', 'N', 'T', 'N', 'N', 'N', 'U', 'T', 'T', 'P', 'R',
+        'R'];
+    const letterResponses = ['0', '0', '1', '0'];
     const letterTraining = [];
-    letterTrainingStimuli.forEach(letter => {
-        // Show letter
-        letterTraining.push({
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: stimulusHTML(letter),
-            choices: "NO_KEYS",
-            trial_duration: stimulusTime
-        });
-
-        // Blank screen between letters
-        letterTraining.push({
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: stimulusHTML(''),
-            choices: "NO_KEYS",
-            trial_duration: 100  // or any duration for the blink
-        });
-    });
-
+    for (let i = 0; i < letterTrainingStimuli.length; i++) {
+        // Letter
+        letterTraining.push(
+            makeStimulus(
+                letterTrainingStimuli[i],
+                [' '],
+                letterResponses[i] === '1' ? ' ' : null,
+                'letter')
+        );
+        letterTraining.push(blankScreen);
+    };
 
     const letterTrainingDone = {
         type: jsPsychHtmlKeyboardResponse,
@@ -127,8 +166,102 @@
     };
 
 
-    const seriesData = JSON.parse('{{ series_data|safe }}');
+    const getRandomBlock = () => {
+        return jsPsych.randomization.sampleWithoutReplacement(seriesData, 1)[0];
+    };
 
+    function updateDebugAccuracy() {
+        const currentData = jsPsych.data.get().values();
+        const letterTrials = currentData.filter(t => t.trial_type === 'letter');
+        const digitTrials = currentData.filter(t => t.trial_type === 'digit');
+
+        const letterCorrect = letterTrials.filter(t => t.correct).length / letterTrials.length || 0;
+        const digitCorrect = digitTrials.filter(t => t.correct).length / digitTrials.length || 0;
+        const overall = 0.65 * letterCorrect + 0.35 * digitCorrect;
+
+        const debugBox = document.getElementById('debug-accuracy');
+        if (debugBox) {
+            debugBox.innerText =
+                `Debug Accuracy:\nOverall: ${(overall * 100).toFixed(2)}%\nLetters: ${(letterCorrect * 100).toFixed(1)}%\nDigits: ${(digitCorrect * 100).toFixed(1)}%`;
+        }
+
+        return overall;
+    }
+
+    function updateDebugFeedback(isCorrect) {
+        const feedbackBox = document.getElementById('debug-feedback');
+        if (feedbackBox) {
+            feedbackBox.innerText = `Debug Feedback: ${isCorrect ? "✓ Correct" : "✗ Incorrect"}`;
+            feedbackBox.style.color = isCorrect ? 'green' : 'red';
+        }
+    }
+
+
+    function makeLetterDigitTimelineFromSeries(block) {
+        const trials = [];
+
+        for (let i = 0; i < block.letters.length; i++) {
+            const letter = block.letters[i];
+            const expected = block.responses[i] === "1" ? " " : null;
+
+            trials.push({
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: stimulusHTML(letter),
+                choices: [' '],
+                response_ends_trial: false,
+                trial_duration: stimulusTime,
+                post_trial_gap: 100,
+                data: {
+                    trial_type: 'letter',
+                    correct_response: expected
+                },
+                on_finish: function (data) {
+                    data.correct = data.response === data.correct_response;
+                    updateDebugAccuracy();
+                    updateDebugFeedback(data.correct);
+                }
+            });
+
+            const number = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 6, 7, 8, 9], 1)[0];
+            const correctKey = number % 2 === 0 ? '2' : '3';
+
+            trials.push({
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: stimulusHTML(number),
+                choices: ['2', '3'],
+                response_ends_trial: false,
+                trial_duration: stimulusTime,
+                post_trial_gap: 100,
+                data: {
+                    trial_type: 'digit',
+                    correct_response: correctKey
+                },
+                on_finish: function (data) {
+                    data.correct = data.response === data.correct_response;
+                    updateDebugAccuracy();
+                    updateDebugFeedback(data.correct);
+                }
+            });
+        }
+
+        return trials;
+    }
+
+    function computeAccuracy(trials) {
+        const letterTrials = trials.filter(t => t.trial_type === 'letter');
+        const digitTrials = trials.filter(t => t.trial_type === 'digit');
+
+        const letterCorrect = letterTrials.filter(t => t.correct).length / letterTrials.length || 0;
+        const digitCorrect = digitTrials.filter(t => t.correct).length / digitTrials.length || 0;
+        const overall = 0.65 * letterCorrect + 0.35 * digitCorrect;
+        const debugBox = document.getElementById('debug-accuracy');
+        if (debugBox) {
+            debugBox.innerText =
+                `Debug Accuracy:\nOverall: ${(overall * 100).toFixed(2)}%\nLetters: ${(letterCorrect * 100).toFixed(1)}%\nDigits: ${(digitCorrect * 100).toFixed(1)}%`;
+        }
+
+        return overall;
+    }
 
     const timeline = [
         {
@@ -145,46 +278,57 @@
         lettersDigitsInstructions
     ];
 
+    (async () => {
+        await jsPsych.run([
+            {
+                type: jsPsychPreload,
+                images: instruction_images
+            },
+            generalInstructions,
+            digitsInstructions,
+            ...digitTraining,
+            digitTrainingDone,
+            lettersInstructions,
+            ...letterTraining,
+            letterTrainingDone,
+            lettersDigitsInstructions
+        ]);
 
-    for (let block of seriesData) {
-        const letters = block.letters;
-        const responses = block.responses;
+        // Training loop with 85% threshold
+        let performance = 0;
 
-        for (let i = 0; i < letters.length; i++) {
-            timeline.push({
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: `<div style="font-size: 72px;">${letters[i]}</div>`,
-                choices: [' '],
-                trial_duration: stimulusTime,
-                data: {
-                    letter: letters[i],
-                    correct_response: responses[i] === "1" ? " " : null
-                },
-                on_finish: function (data) {
-                    data.correct = (data.response === data.correct_response);
-                }
-            });
+        while (performance <= 0.85) {
+            const block = getRandomBlock();
+            const trainingTrials = makeLetterDigitTimelineFromSeries(block);
 
-            const number = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 6, 7, 8, 9], 1)[0];
-            const correctNumKey = number % 2 === 0 ? '2' : '3';
+            await jsPsych.run(trainingTrials);
 
-            timeline.push({
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: `<div style="font-size: 72px;">${number}</div>`,
-                choices: ['2', '3'],
-                trial_duration: stimulusTime,
-                data: {
-                    number: number,
-                    correct_response: correctNumKey
-                },
-                on_finish: function (data) {
-                    data.correct = (data.response === data.correct_response);
-                }
-            });
+            performance = updateDebugAccuracy();
+
+
+            if (performance < 0.85) {
+                await jsPsych.run([{
+                    type: jsPsychHtmlKeyboardResponse,
+                    stimulus: '<p>Performance below 85%. Training will repeat.</p><p>Press Y to continue.</p>',
+                    choices: ['y']
+                }]);
+
+                jsPsych.data.reset();  // clear training data only
+            }
         }
-    }
 
-    jsPsych.run(timeline);
+        await jsPsych.run([{
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: '<p>Training passed!</p><p>Press any key to begin the pretest.</p>',
+            choices: 'ALL_KEYS'
+        }]);
+
+        // Actual Pretest
+        for (const block of seriesData) {
+            await jsPsych.run(makeLetterDigitTimelineFromSeries(block));
+        }
+    })();
+
 </script>
 
 {% endblock %}

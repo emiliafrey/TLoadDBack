@@ -36,7 +36,7 @@
 <script src="https://unpkg.com/jspsych@7.3.0"></script>
 <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
 <script src="https://unpkg.com/@jspsych/plugin-preload"></script>
-
+<script src="https://unpkg.com/@jspsych/plugin-call-function"></script>
 
 <script>
     const jsPsych = initJsPsych({
@@ -58,6 +58,33 @@
     let totalDigits = 0;
     let totalHitLetters = 0;
     let totalRejectLetters = 0;
+
+    const threshold = 0.6;
+
+    function resetStats() {
+        digitAccuracy = 0;
+        letterAccuracy = 0;
+        overallAccuracy = 0;
+        correctDigits = 0;
+        correctHitLetters = 0;
+        correctRejectLetters = 0;
+        totalDigits = 0;
+        totalHitLetters = 0;
+        totalRejectLetters = 0;
+    }
+
+    function resetDebugInfo() {
+        resetStats();
+        updateDebugAccuracy();        // redraw the accuracy box -> 0 %
+        updateDebugFeedback(null);
+    }
+
+    const resetTrial = {
+        type: jsPsychCallFunction,
+        func: () => {           // this runs at the moment the trial is reached
+            resetDebugInfo();     // zero counters + update UI
+        }
+    };
 
     const instruction_images = [
         '/static/images/pretest/General_Instructions_REMADE.bmp',
@@ -160,7 +187,12 @@
                 correctRejectLetters++;
             }
         }
-        letterAccuracy = 0.65 * (correctHitLetters / totalHitLetters) + 0.35 * (correctRejectLetters / totalRejectLetters);
+
+
+        const letterHitAccuracy = totalHitLetters > 0 ? correctHitLetters / totalHitLetters : 0;
+        const letterRejectionAccuracy = totalRejectLetters > 0 ? correctRejectLetters / totalRejectLetters : 0;
+
+        letterAccuracy = 0.65 * letterHitAccuracy + 0.35 * letterRejectionAccuracy;
         overallAccuracy = 0.65 * letterAccuracy + 0.35 * digitAccuracy;
     }
 
@@ -176,8 +208,9 @@
         );
         digitTraining.push(blankScreen);
     });
-    // reset digit accuracy for training
-    digitAccuracy = 0;
+
+    resetDebugInfo();
+
     const digitTrainingDone = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: '<p>Well done! Digits training complete.</p><p>Press any key to continue.</p>',
@@ -202,6 +235,8 @@
     }
     ;
 
+    resetDebugInfo();
+
     const letterTrainingDone = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: '<p>Well done! Letters training complete.</p><p>Press any key to continue.</p>',
@@ -223,10 +258,12 @@
     }
 
 
-
     function updateDebugFeedback(isCorrect) {
         const feedbackBox = document.getElementById('debug-feedback');
-        if (feedbackBox) {
+        if (isCorrect === null) {
+            feedbackBox.innerText = 'Debug Feedback: (waiting…)';
+            feedbackBox.style.color = 'navy';
+        } else {
             feedbackBox.innerText = `Debug Feedback: ${isCorrect ? "✓ Correct" : "✗ Incorrect"}`;
             feedbackBox.style.color = isCorrect ? 'green' : 'red';
         }
@@ -240,64 +277,16 @@
             const letter = block.letters[i];
             const expected = block.responses[i] === "1" ? " " : null;
 
-            trials.push({
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: stimulusHTML(letter),
-                choices: [' '],
-                response_ends_trial: false,
-                trial_duration: stimulusTime,
-                post_trial_gap: 100,
-                data: {
-                    trial_type: 'letter',
-                    correct_response: expected
-                },
-                on_finish: function (data) {
-                    data.correct = data.response === data.correct_response;
-                    updateDebugAccuracy();
-                    updateDebugFeedback(data.correct);
-                }
-            });
+            trials.push(makeStimulus(letter, [' '], expected, 'letter'));
 
             const number = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 6, 7, 8, 9], 1)[0];
             const correctKey = number % 2 === 0 ? '2' : '3';
 
-            trials.push({
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: stimulusHTML(number),
-                choices: ['2', '3'],
-                response_ends_trial: false,
-                trial_duration: stimulusTime,
-                post_trial_gap: 100,
-                data: {
-                    trial_type: 'digit',
-                    correct_response: correctKey
-                },
-                on_finish: function (data) {
-                    data.correct = data.response === data.correct_response;
-                    updateDebugAccuracy();
-                    updateDebugFeedback(data.correct);
-                }
-            });
+            trials.push(makeStimulus(number, ['2', '3'], correctKey, 'digit'));
         }
-
         return trials;
     }
 
-
-    const timeline = [
-        {
-            type: jsPsychPreload,
-            images: instruction_images
-        },
-        generalInstructions,
-        digitsInstructions,
-        ...digitTraining,
-        digitTrainingDone,
-        lettersInstructions,
-        ...letterTraining,
-        letterTrainingDone,
-        lettersDigitsInstructions
-    ];
 
     (async () => {
         await jsPsych.run([
@@ -309,34 +298,34 @@
             digitsInstructions,
             ...digitTraining,
             digitTrainingDone,
+            resetTrial,
             lettersInstructions,
             ...letterTraining,
             letterTrainingDone,
+            resetTrial,
             lettersDigitsInstructions
         ]);
 
-        // Training loop with 85% threshold
-        let performance = 0;
 
-        while (performance <= 0.85) {
+        while (overallAccuracy <= threshold) {
             const block = getRandomBlock();
             const trainingTrials = makeLetterDigitTimelineFromSeries(block);
 
             await jsPsych.run(trainingTrials);
 
-            performance = updateDebugAccuracy();
-
-
-            if (performance < 0.85) {
+            if (overallAccuracy <= threshold) {
                 await jsPsych.run([{
                     type: jsPsychHtmlKeyboardResponse,
                     stimulus: '<p>Performance below 85%. Training will repeat.</p><p>Press Y to continue.</p>',
                     choices: ['y']
                 }]);
 
-                jsPsych.data.reset();  // clear training data only
+                jsPsych.data.reset();
+                resetDebugInfo();
             }
         }
+
+        resetDebugInfo();
 
         await jsPsych.run([{
             type: jsPsychHtmlKeyboardResponse,

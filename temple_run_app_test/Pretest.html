@@ -49,6 +49,16 @@
     const stimulusTime = parseInt('{{ stimulus_time}}');
     const seriesData = JSON.parse('{{ series_data|safe }}');
 
+    let digitAccuracy = 0;
+    let letterAccuracy = 0;
+    let overallAccuracy = 0;
+    let correctDigits = 0;
+    let correctHitLetters = 0;
+    let correctRejectLetters = 0;
+    let totalDigits = 0;
+    let totalHitLetters = 0;
+    let totalRejectLetters = 0;
+
     const instruction_images = [
         '/static/images/pretest/General_Instructions_REMADE.bmp',
         '/static/images/pretest/Digits_Instructions_REMADE.bmp',
@@ -117,10 +127,41 @@
             },
             on_finish: function (data) {
                 data.correct = data.response === data.correct_response;
-                updateDebugAccuracy();
+
                 updateDebugFeedback(data.correct);
+                if (trialType === 'digit') {
+                    recalculateDigitAccuracy(data.correct);
+                } else if (trialType === 'letter') {
+                    recalculateLetterAccuracy(data.correct, data.response === ' ');
+                }
+                updateDebugAccuracy();
             }
         };
+    }
+
+    function recalculateDigitAccuracy(lastAnswerCorrect) {
+        if (lastAnswerCorrect) {
+            correctDigits++;
+        }
+        totalDigits++;
+        digitAccuracy = correctDigits / totalDigits;
+        overallAccuracy = 0.65 * letterAccuracy + 0.35 * digitAccuracy;
+    }
+
+    function recalculateLetterAccuracy(lastAnswerCorrect, hit) {
+        if (hit) {
+            totalHitLetters++;
+            if (lastAnswerCorrect) {
+                correctHitLetters++;
+            }
+        } else {
+            totalRejectLetters++;
+            if (lastAnswerCorrect) {
+                correctRejectLetters++;
+            }
+        }
+        letterAccuracy = 0.65 * (correctHitLetters / totalHitLetters) + 0.35 * (correctRejectLetters / totalRejectLetters);
+        overallAccuracy = 0.65 * letterAccuracy + 0.35 * digitAccuracy;
     }
 
 
@@ -135,7 +176,8 @@
         );
         digitTraining.push(blankScreen);
     });
-
+    // reset digit accuracy for training
+    digitAccuracy = 0;
     const digitTrainingDone = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: '<p>Well done! Digits training complete.</p><p>Press any key to continue.</p>',
@@ -157,7 +199,8 @@
                 'letter')
         );
         letterTraining.push(blankScreen);
-    };
+    }
+    ;
 
     const letterTrainingDone = {
         type: jsPsychHtmlKeyboardResponse,
@@ -170,23 +213,16 @@
         return jsPsych.randomization.sampleWithoutReplacement(seriesData, 1)[0];
     };
 
+
     function updateDebugAccuracy() {
-        const currentData = jsPsych.data.get().values();
-        const letterTrials = currentData.filter(t => t.trial_type === 'letter');
-        const digitTrials = currentData.filter(t => t.trial_type === 'digit');
-
-        const letterCorrect = letterTrials.filter(t => t.correct).length / letterTrials.length || 0;
-        const digitCorrect = digitTrials.filter(t => t.correct).length / digitTrials.length || 0;
-        const overall = 0.65 * letterCorrect + 0.35 * digitCorrect;
-
         const debugBox = document.getElementById('debug-accuracy');
         if (debugBox) {
             debugBox.innerText =
-                `Debug Accuracy:\nOverall: ${(overall * 100).toFixed(2)}%\nLetters: ${(letterCorrect * 100).toFixed(1)}%\nDigits: ${(digitCorrect * 100).toFixed(1)}%`;
+                `Debug Accuracy:\nOverall: ${(overallAccuracy * 100).toFixed(2)}%\nLetters: ${(letterAccuracy * 100).toFixed(1)}%\nDigits: ${(digitAccuracy * 100).toFixed(1)}%`;
         }
-
-        return overall;
     }
+
+
 
     function updateDebugFeedback(isCorrect) {
         const feedbackBox = document.getElementById('debug-feedback');
@@ -247,21 +283,6 @@
         return trials;
     }
 
-    function computeAccuracy(trials) {
-        const letterTrials = trials.filter(t => t.trial_type === 'letter');
-        const digitTrials = trials.filter(t => t.trial_type === 'digit');
-
-        const letterCorrect = letterTrials.filter(t => t.correct).length / letterTrials.length || 0;
-        const digitCorrect = digitTrials.filter(t => t.correct).length / digitTrials.length || 0;
-        const overall = 0.65 * letterCorrect + 0.35 * digitCorrect;
-        const debugBox = document.getElementById('debug-accuracy');
-        if (debugBox) {
-            debugBox.innerText =
-                `Debug Accuracy:\nOverall: ${(overall * 100).toFixed(2)}%\nLetters: ${(letterCorrect * 100).toFixed(1)}%\nDigits: ${(digitCorrect * 100).toFixed(1)}%`;
-        }
-
-        return overall;
-    }
 
     const timeline = [
         {

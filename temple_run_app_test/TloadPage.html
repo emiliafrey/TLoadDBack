@@ -1,0 +1,74 @@
+{% extends "global/Page.html" %}
+{% block content %}
+<div id="jspsych-target"></div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+<!-- jsPsych core -->
+<link href="{{ static 'jspsych/jspsych.css' }}" rel="stylesheet" type="text/css" />
+<script src="{{ static 'jspsych/jspsych.js' }}"></script>
+
+<!-- jsPsych plugins -->
+<script src="{{ static 'jspsych/jspsych-html-keyboard-response.js' }}"></script>
+<script src="{{ static 'jspsych/jspsych-call-function.js' }}"></script>
+<script>
+window.addEventListener('load', function () {
+    // ✅ Define jsPsych first
+    const jsPsych = initJsPsych({
+        display_element: 'jspsych-target',
+        on_finish: function () {
+            // ✅ Now it's safe to use
+            liveSend(jsPsych.data.get().json());
+        }
+    });
+
+    const timeline = [];
+
+    // Instructions
+    timeline.push({
+        type: window.jsPsychHtmlKeyboardResponse,
+        stimulus: `
+            <p>This is the TloadDback task.</p>
+            <p>Press "1" if the number is odd, "2" if it's even, and SPACE if the letter is the same as the previous one.</p>
+            <p>Press SPACE to begin.</p>
+        `,
+        choices: [' ']
+    });
+
+    // Trial list
+    const trialList = [
+        {stim: '8', correct: '2'},
+        {stim: 'F', correct: ''},
+        {stim: '4', correct: '2'},
+        {stim: 'F', correct: ' '}
+    ];
+
+    trialList.forEach(t => {
+        timeline.push({
+            type: window.jsPsychHtmlKeyboardResponse,
+            stimulus: `<div style="font-size:64px">${t.stim}</div>`,
+            trial_duration: 2000,
+            choices: ['1', '2', ' '],
+            data: {correct: t.correct},
+            on_finish: function (data) {
+                data.correct_response = t.correct;
+                data.correct = (t.correct === '' && data.response === null) || data.response === t.correct;
+            }
+        });
+    });
+
+    timeline.push({
+        type: window.jsPsychHtmlKeyboardResponse,
+        stimulus: '<p>Task complete! Press SPACE to continue.</p>',
+        choices: [' ']
+    });
+
+    // ✅ Run after everything is set up
+    jsPsych.run(timeline);
+});
+</script>
+
+
+{% endblock %}

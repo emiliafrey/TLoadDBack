@@ -1,5 +1,7 @@
-from otree.api import *
+import json
 
+from otree.api import *
+from .series_data import series_data as sd
 
 doc = """
 A test to see if playing Temple Run 2 could work well
@@ -10,6 +12,7 @@ class C(BaseConstants):
     NAME_IN_URL = 'temple_run_app_test'
     PLAYERS_PER_GROUP = None
     NUM_ROUNDS = 1
+    STIMULUS_TIME_DURATION_PRETEST = 1.5
 
 
 class Subsession(BaseSubsession):
@@ -21,12 +24,33 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    js_data = models.LongStringField()
-    accuracy = models.FloatField()
-    mean_rt = models.FloatField()
+    # --- Config fields (from YAML) ---
+    subject_number = models.StringField()
+    age = models.IntegerField()
+    sex = models.StringField(choices=["male", "female"])
+    condition = models.StringField(choices=["HCL", "LCL"])
+
+    # --- Pretest Results ---
+    pretest_hcl = models.FloatField()
+    pretest_lcl = models.FloatField()
+
+    # Performance log for export/debugging
+    pretest_performance_json = models.LongStringField()
+    pretest_training_log = models.LongStringField()
 
 
 # PAGES
+
+class Pretest(Page):
+    def vars_for_template(self):
+        return dict(
+            series_data=json.dumps(sd),
+            stimulus_time=int(self.session.config.get('stimulus_time', 1500)),
+        )
+
+    def is_displayed(self):
+        return True
+
 
 class TloadPage(Page):
     template_name = 'temple_run_app_test/TloadPage.html'
@@ -46,4 +70,4 @@ class TloadPage(Page):
 class TempleRunPage(Page):
     pass
 
-page_sequence = [TloadPage, TempleRunPage]
+page_sequence = [Pretest, TloadPage, TempleRunPage]

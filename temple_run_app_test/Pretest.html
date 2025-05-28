@@ -1,0 +1,190 @@
+{% extends "global/Page.html" %}
+{% block title %}Pretest Task{% endblock %}
+{% block content %}
+
+<div id="jspsych-target"></div>
+
+<script src="https://unpkg.com/jspsych@7.3.0"></script>
+<script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
+<script src="https://unpkg.com/@jspsych/plugin-preload"></script>
+
+
+<script>
+    const jsPsych = initJsPsych({
+        display_element: 'jspsych-target',
+        on_finish: function () {
+            console.log('Done with instructions.');
+        }
+    });
+
+    const stimulusTime = parseInt('{{ stimulus_time}}');
+
+
+    const instruction_images = [
+        '/static/images/pretest/General_Instructions_REMADE.bmp',
+        '/static/images/pretest/Digits_Instructions_REMADE.bmp',
+        '/static/images/pretest/Letters_Instructions_REMADE.bmp',
+        '/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp'
+    ];
+
+
+    // Show each instruction image, wait for 'y' key to continue
+    const generalInstructions = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<img src="/static/images/pretest/General_Instructions_REMADE.bmp" style="max-width: 100%">`,
+        // prompt: "<p>Press 'Y' to continue</p>",
+        choices: ['y']
+    };
+
+    const digitsInstructions = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<img src="/static/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
+        // prompt: "<p>Press 'Y' to continue</p>",
+        choices: ['y']
+    };
+
+    const lettersInstructions = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<img src="/static/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`,
+        // prompt: "<p>Press 'Y' to continue</p>",
+        choices: ['y']
+    };
+
+    const lettersDigitsInstructions = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<img src="/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
+        // prompt: "<p>Press 'Y' to continue</p>",
+        choices: ['y']
+    };
+
+    const stimulusHTML = content => `
+  <div style="
+    width: 100%;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: black;
+    font-size: 72px;
+    color: white;
+  ">
+    ${content}
+  </div>
+`;
+
+
+    const digitTrainingStimuli = ['9', '1', '2', '8', '4', '6', '7', '8', '9', '3', '1', '6'];
+    const digitTraining = [];
+    digitTrainingStimuli.forEach(num => {
+        // Show digit
+        digitTraining.push({
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: stimulusHTML(num),
+            choices: "NO_KEYS",
+            trial_duration: stimulusTime
+        });
+
+        // Add blank screen
+        digitTraining.push({
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: stimulusHTML(''),
+            choices: "NO_KEYS",
+            trial_duration: 100  // 100ms blank
+        });
+    });
+
+    const digitTrainingDone = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: '<p>Well done! Digits training complete.</p><p>Press any key to continue.</p>',
+        choices: "ALL_KEYS"
+    };
+
+    const letterTrainingStimuli = ['E', 'P', 'P', 'L', 'A', 'P', 'L', 'A', 'A', 'N', 'T', 'N', 'N', 'N', 'U', 'T', 'T', 'P', 'R', 'R'];
+    const letterTraining = [];
+    letterTrainingStimuli.forEach(letter => {
+        // Show letter
+        letterTraining.push({
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: stimulusHTML(letter),
+            choices: "NO_KEYS",
+            trial_duration: stimulusTime
+        });
+
+        // Blank screen between letters
+        letterTraining.push({
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: stimulusHTML(''),
+            choices: "NO_KEYS",
+            trial_duration: 100  // or any duration for the blink
+        });
+    });
+
+
+    const letterTrainingDone = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: '<p>Well done! Letters training complete.</p><p>Press any key to continue.</p>',
+        choices: "ALL_KEYS"
+    };
+
+
+    const seriesData = JSON.parse('{{ series_data|safe }}');
+
+
+    const timeline = [
+        {
+            type: jsPsychPreload,
+            images: instruction_images
+        },
+        generalInstructions,
+        digitsInstructions,
+        ...digitTraining,
+        digitTrainingDone,
+        lettersInstructions,
+        ...letterTraining,
+        letterTrainingDone,
+        lettersDigitsInstructions
+    ];
+
+
+    for (let block of seriesData) {
+        const letters = block.letters;
+        const responses = block.responses;
+
+        for (let i = 0; i < letters.length; i++) {
+            timeline.push({
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: `<div style="font-size: 72px;">${letters[i]}</div>`,
+                choices: [' '],
+                trial_duration: stimulusTime,
+                data: {
+                    letter: letters[i],
+                    correct_response: responses[i] === "1" ? " " : null
+                },
+                on_finish: function (data) {
+                    data.correct = (data.response === data.correct_response);
+                }
+            });
+
+            const number = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 6, 7, 8, 9], 1)[0];
+            const correctNumKey = number % 2 === 0 ? '2' : '3';
+
+            timeline.push({
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: `<div style="font-size: 72px;">${number}</div>`,
+                choices: ['2', '3'],
+                trial_duration: stimulusTime,
+                data: {
+                    number: number,
+                    correct_response: correctNumKey
+                },
+                on_finish: function (data) {
+                    data.correct = (data.response === data.correct_response);
+                }
+            });
+        }
+    }
+
+    jsPsych.run(timeline);
+</script>
+
+{% endblock %}

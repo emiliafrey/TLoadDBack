@@ -420,12 +420,6 @@
 
         await jsPsych.run([{
             type: jsPsychHtmlKeyboardResponse,
-            stimulus: '<p>Training passed!</p><p>Press any key to begin the pretest.</p>',
-            choices: 'ALL_KEYS'
-        }]);
-
-        await jsPsych.run([{
-            type: jsPsychHtmlKeyboardResponse,
             stimulus: `<p>You have now reached the real pretest!.</p><p>Take a break and wait until the test director gives further instruction before starting. Press 'Y' to begin once you are ready.</p>`,
             choices: ['y']
         }]);

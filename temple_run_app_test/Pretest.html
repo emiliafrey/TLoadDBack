@@ -20,7 +20,7 @@
 
 <div id="debug-feedback" style="
   position: fixed;
-  top: 120px;
+  top: 150px;
   right: 20px;
   background-color: rgba(255,255,255,0.9);
   padding: 8px 12px;
@@ -32,6 +32,22 @@
 ">
     Debug Feedback: (waiting...)
 </div>
+
+<div id="debug-pretest" style="
+  position: fixed;
+  top: 230px;
+  right: 20px;
+  background-color: rgba(255,255,255,0.9);
+  padding: 8px 12px;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+  font-weight: bold;
+  color: darkgreen;
+  z-index: 9999;
+">
+    Debug Pretest: (waiting...)
+</div>
+
 
 <script src="https://unpkg.com/jspsych@7.3.0"></script>
 <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
@@ -46,7 +62,7 @@
         }
     });
 
-    const stimulusTime = parseInt('{{ stimulus_time}}');
+    let stimulusTime = parseInt('{{ stimulus_time}}');
     const seriesData = JSON.parse('{{ series_data|safe }}');
 
     let digitAccuracy = 0;
@@ -60,6 +76,9 @@
     let totalRejectLetters = 0;
 
     const threshold = 0.6;
+
+    let error = 0;
+    let accumulatedError = 0;
 
     function resetStats() {
         digitAccuracy = 0;
@@ -77,14 +96,27 @@
         resetStats();
         updateDebugAccuracy();        // redraw the accuracy box -> 0 %
         updateDebugFeedback(null);
+        updateDebugPretestInfo();
+    }
+
+    function saveTrialToLocalStorage(trialData) {
+        let allData = JSON.parse(localStorage.getItem('autosave_data')) || [];
+        allData.push(trialData);
+        localStorage.setItem('autosave_data', JSON.stringify(allData));
     }
 
     const resetTrial = {
         type: jsPsychCallFunction,
-        func: () => {           // this runs at the moment the trial is reached
-            resetDebugInfo();     // zero counters + update UI
+        func: () => {
+            resetDebugInfo();
         }
     };
+
+    function saveTrialToLocalStorage(trialData) {
+        let allData = JSON.parse(localStorage.getItem('autosave_data')) || [];
+        allData.push(trialData);
+        localStorage.setItem('autosave_data', JSON.stringify(allData));
+    }
 
     const instruction_images = [
         '/static/images/pretest/General_Instructions_REMADE.bmp',
@@ -154,8 +186,9 @@
             },
             on_finish: function (data) {
                 data.correct = data.response === data.correct_response;
-
+                saveTrialToLocalStorage(data);
                 updateDebugFeedback(data.correct);
+                updateDebugPretestInfo();
                 if (trialType === 'digit') {
                     recalculateDigitAccuracy(data.correct);
                 } else if (trialType === 'letter') {
@@ -269,6 +302,13 @@
         }
     }
 
+    function updateDebugPretestInfo() {
+        const box = document.getElementById('debug-pretest');
+        if (box) {
+            box.innerText = `Debug Pretest:\nErrors: ${error}\nAccumulated Errors: ${accumulatedError}\nStimulus Duration Time: ${stimulusTime}ms`;
+        }
+    }
+
 
     function makeLetterDigitTimelineFromSeries(block) {
         const trials = [];
@@ -333,10 +373,75 @@
             choices: 'ALL_KEYS'
         }]);
 
-        // Actual Pretest
-        for (const block of seriesData) {
-            await jsPsych.run(makeLetterDigitTimelineFromSeries(block));
+        await jsPsych.run([{
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `<p>You have now reached the real pretest!.</p><p>Take a break and wait until the test director gives further instruction before starting. Press 'Y' to begin once you are ready.</p>`,
+            choices: ['y']
+        }]);
+
+        // actual pretest starts here
+        let pretestHCL = null;
+        let pretestLCL = null;
+        overallAccuracy = 0.99;
+
+        // decreasing since they could handle 1500
+        stimulusTime -= 100;
+
+        while (overallAccuracy >= 0.01) {
+            const block = getRandomBlock();
+            resetDebugInfo();
+            const trials = makeLetterDigitTimelineFromSeries(block);
+
+            await jsPsych.run(trials);
+
+            if (overallAccuracy < 0.85) {
+                error++;
+                accumulatedError++;
+
+                if (error === 3) {
+                    pretestHCL = stimulusTime + 100;
+                    pretestLCL = pretestHCL + 0.5 * pretestHCL;
+                    break;
+                }
+                // Although this value is fixed to 3 in Borragan & Slama,2017, increasing it at 5 might increase the pretest calibration
+                // the subject has had their performance across all tests dip below 85% 3 times. This ends the test. STD is keptat the current value.
+                if (accumulatedError === 3) {
+                    pretestHCL = stimulusTime;
+                    pretestLCL = pretestHCL + 0.5 * pretestHCL;
+                    break;
+                }
+
+                await jsPsych.run([{
+                    type: jsPsychHtmlKeyboardResponse,
+                    stimulus: `<p>Let's take a break.</p><p>Press 'Y' to begin again when you're ready.</p>`,
+                    choices: ['y']
+                }]);
+
+                jsPsych.data.reset();
+            } else {
+                stimulusTime -= -100;
+                error = 0;
+
+                await jsPsych.run([{
+                    type: jsPsychHtmlKeyboardResponse,
+                    stimulus: `<p>Let's take a break.</p><p>Press 'Y' to begin again when you're ready.</p>`,
+                    choices: ['y']
+                }]);
+
+                jsPsych.data.reset();
+            }
         }
+
+        console.log('Pretest complete.');
+        console.log('Pretest HCL:', pretestHCL);
+        console.log('Pretest LCL:', pretestLCL);
+
+        await jsPsych.run([{
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `<p>Pretest complete!</p><p>Your HCL is ${pretestHCL} ms and LCL is ${pretestLCL} ms.</p><p>Press any key to finish.</p>`,
+            choices: 'ALL_KEYS'
+        }]);
+
     })();
 
 </script>

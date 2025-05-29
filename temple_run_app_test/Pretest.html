@@ -62,7 +62,9 @@
         }
     });
 
-    let stimulusTime = parseInt('{{ stimulus_time}}');
+    const settings = JSON.parse('{{ test_settings|safe }}');
+
+    let stimulusTime = settings.stimulus_time_duration_pretest;
     const seriesData = JSON.parse('{{ series_data|safe }}');
 
     let digitAccuracy = 0;
@@ -75,10 +77,12 @@
     let totalHitLetters = 0;
     let totalRejectLetters = 0;
 
-    const threshold = 0.6;
+    const prePreTestThreshold = 0.6;
 
     let error = 0;
     let accumulatedError = 0;
+
+    let currentPhase = null;
 
     function resetStats() {
         digitAccuracy = 0;
@@ -97,12 +101,6 @@
         updateDebugAccuracy();        // redraw the accuracy box -> 0 %
         updateDebugFeedback(null);
         updateDebugPretestInfo();
-    }
-
-    function saveTrialToLocalStorage(trialData) {
-        let allData = JSON.parse(localStorage.getItem('autosave_data')) || [];
-        allData.push(trialData);
-        localStorage.setItem('autosave_data', JSON.stringify(allData));
     }
 
     const resetTrial = {
@@ -135,19 +133,28 @@
     const digitsInstructions = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        choices: ['y']
+        choices: ['y'],
+        on_finish: function () {
+            currentPhase = "digit training";
+        }
     };
 
     const lettersInstructions = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        choices: ['y']
+        choices: ['y'],
+        on_finish: function () {
+            currentPhase = "letter training";
+        }
     };
 
     const lettersDigitsInstructions = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        choices: ['y']
+        choices: ['y'],
+        on_finish: function () {
+            currentPhase = "letter and digit training";
+        }
     };
 
     const stimulusHTML = content => `
@@ -180,13 +187,22 @@
             response_ends_trial: false,
             trial_duration: stimulusTime,
             post_trial_gap: 100,
-            data: {
-                trial_type: trialType,
-                correct_response: correctResponse
-            },
             on_finish: function (data) {
-                data.correct = data.response === data.correct_response;
-                saveTrialToLocalStorage(data);
+                data.correct = data.response === correctResponse;
+
+                saveTrialToLocalStorage({
+                    phase: currentPhase,
+                    trial_type: trialType,
+                    stimulus: content,
+                    response: data.response,
+                    correct_response: correctResponse,
+                    correct: data.correct,
+                    digit_accuracy: digitAccuracy,
+                    letter_accuracy: letterAccuracy,
+                    overall_accuracy: overallAccuracy,
+                    rt: data.rt,
+                    timestamp: Date.now()
+                });
                 updateDebugFeedback(data.correct);
                 updateDebugPretestInfo();
                 if (trialType === 'digit') {
@@ -198,6 +214,41 @@
             }
         };
     }
+
+    function downloadCSVFromLocalStorage(filename = 'experiment_data.csv') {
+        const data = JSON.parse(localStorage.getItem('autosave_data')) || [];
+
+        if (data.length === 0) return;
+
+        // Build CSV header section from settings
+        const settingsHeader = ['--- Experiment Settings ---'];
+        for (const [key, value] of Object.entries(settings)) {
+            settingsHeader.push(`${key},${value}`);
+        }
+
+        // Leave a blank line before trial data
+        settingsHeader.push('', '--- Trial Data ---');
+
+        // Build data rows
+        const keys = Object.keys(data[0]);
+        const csvRows = [keys.join(",")];
+        for (let row of data) {
+            csvRows.push(keys.map(k => JSON.stringify(row[k] ?? '')).join(","));
+        }
+
+        const csvString = [...settingsHeader, ...csvRows].join("\n");
+        const blob = new Blob([csvString], {type: "text/csv"});
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
 
     function recalculateDigitAccuracy(lastAnswerCorrect) {
         if (lastAnswerCorrect) {
@@ -273,7 +324,7 @@
     const letterTrainingDone = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: '<p>Well done! Letters training complete.</p><p>Press any key to continue.</p>',
-        choices: "ALL_KEYS"
+        choices: "ALL_KEYS",
     };
 
 
@@ -346,14 +397,14 @@
             lettersDigitsInstructions
         ]);
 
-
-        while (overallAccuracy <= threshold) {
+        currentPhase = "pre-pre-test";
+        while (overallAccuracy <= prePreTestThreshold) {
             const block = getRandomBlock();
             const trainingTrials = makeLetterDigitTimelineFromSeries(block);
 
             await jsPsych.run(trainingTrials);
 
-            if (overallAccuracy <= threshold) {
+            if (overallAccuracy <= prePreTestThreshold) {
                 await jsPsych.run([{
                     type: jsPsychHtmlKeyboardResponse,
                     stimulus: '<p>Performance below 85%. Training will repeat.</p><p>Press Y to continue.</p>',
@@ -386,7 +437,7 @@
 
         // decreasing since they could handle 1500
         stimulusTime -= 100;
-
+        currentPhase = "pre-test";
         while (overallAccuracy >= 0.01) {
             const block = getRandomBlock();
             resetDebugInfo();
@@ -398,16 +449,16 @@
                 error++;
                 accumulatedError++;
 
-                if (error === 3) {
-                    pretestHCL = stimulusTime + 100;
-                    pretestLCL = pretestHCL + 0.5 * pretestHCL;
-                    break;
-                }
                 // Although this value is fixed to 3 in Borragan & Slama,2017, increasing it at 5 might increase the pretest calibration
                 // the subject has had their performance across all tests dip below 85% 3 times. This ends the test. STD is keptat the current value.
-                if (accumulatedError === 3) {
-                    pretestHCL = stimulusTime;
+                if (error === 3 || accumulatedError === 3) {
+                    pretestHCL = stimulusTime + 100;
                     pretestLCL = pretestHCL + 0.5 * pretestHCL;
+                    await jsPsych.run([{
+                        type: jsPsychHtmlKeyboardResponse,
+                        stimulus: `<p>Pretest complete!</p><p>Your HCL is ${pretestHCL} ms and LCL is ${pretestLCL} ms.</p><p>Press any key to finish.</p>`,
+                        choices: 'ALL_KEYS'
+                    }]);
                     break;
                 }
 
@@ -419,7 +470,7 @@
 
                 jsPsych.data.reset();
             } else {
-                stimulusTime -= -100;
+                stimulusTime -= 100;
                 error = 0;
 
                 await jsPsych.run([{
@@ -432,15 +483,8 @@
             }
         }
 
-        console.log('Pretest complete.');
-        console.log('Pretest HCL:', pretestHCL);
-        console.log('Pretest LCL:', pretestLCL);
 
-        await jsPsych.run([{
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: `<p>Pretest complete!</p><p>Your HCL is ${pretestHCL} ms and LCL is ${pretestLCL} ms.</p><p>Press any key to finish.</p>`,
-            choices: 'ALL_KEYS'
-        }]);
+        downloadCSVFromLocalStorage();
 
     })();
 

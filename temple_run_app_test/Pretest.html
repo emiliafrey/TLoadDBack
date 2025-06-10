@@ -281,19 +281,18 @@
     }
 
 
-    const digitTrainingStimuli = ['9', '1', '2',
-        //'8', '4', '6', '7', '8', '9', '3', '1',
-        '6'];
-    const digitTraining = [];
-    digitTrainingStimuli.forEach(num => {
-        const correctKey = num % 2 === 0 ? '2' : '3';
-        digitTraining.push(
-            makeStimulus(num, ['2', '3'], correctKey, 'digit')
-        );
-        digitTraining.push(blankScreen);
-    });
+    async function digitTrainingLoop() {
+        const digitBlock = [];
+        while (digitAccuracy < 0.85) {
+            for (let i = 0; i < 10; i++) {
+                pushRandomNumberStimulus(digitBlock);
+                digitBlock.push(blankScreen);
+            }
+            await jsPsych.run(digitBlock);
+        }
+        resetDebugInfo();
+    }
 
-    resetDebugInfo();
 
     const digitTrainingDone = {
         type: jsPsychHtmlKeyboardResponse,
@@ -301,25 +300,21 @@
         choices: "ALL_KEYS"
     };
 
-    const letterTrainingStimuli = ['E', 'P', 'P',
-        // 'L', 'A', 'P', 'L', 'A', 'A', 'N', 'T', 'N', 'N', 'N', 'U', 'T', 'T', 'P', 'R',
-        'R'];
-    const letterResponses = ['0', '0', '1', '0'];
-    const letterTraining = [];
-    for (let i = 0; i < letterTrainingStimuli.length; i++) {
-        // Letter
-        letterTraining.push(
-            makeStimulus(
-                letterTrainingStimuli[i],
-                [' '],
-                letterResponses[i] === '1' ? ' ' : null,
-                'letter')
-        );
-        letterTraining.push(blankScreen);
+    async function letterTrainingLoop() {
+        while (letterAccuracy < 0.85) {
+            const letterTraining = [];
+            const block = getRandomBlock();
+            for (let i = 0; i < block.letters.length; i++) {
+                const letter = block.letters[i];
+                const expected = block.responses[i] === "1" ? " " : null;
+                letterTraining.push(makeStimulus(letter, [' '], expected, 'letter'));
+                letterTraining.push(blankScreen);
+            }
+            await jsPsych.run(letterTraining);
+        }
+        resetDebugInfo();
     }
-    ;
 
-    resetDebugInfo();
 
     const letterTrainingDone = {
         type: jsPsychHtmlKeyboardResponse,
@@ -361,23 +356,24 @@
     }
 
 
-    function makeLetterDigitTimelineFromSeries(block) {
+    function makeLetterDigitTimelineFromSeries() {
         const trials = [];
-
+        const block = getRandomBlock();
         for (let i = 0; i < block.letters.length; i++) {
             const letter = block.letters[i];
             const expected = block.responses[i] === "1" ? " " : null;
-
             trials.push(makeStimulus(letter, [' '], expected, 'letter'));
 
-            const number = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 6, 7, 8, 9], 1)[0];
-            const correctKey = number % 2 === 0 ? '2' : '3';
-
-            trials.push(makeStimulus(number, ['2', '3'], correctKey, 'digit'));
+            pushRandomNumberStimulus(trials);
         }
         return trials;
     }
 
+    function pushRandomNumberStimulus(trials) {
+        const number = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 6, 7, 8, 9], 1)[0];
+        const correctKey = number % 2 === 0 ? '2' : '3';
+        trials.push(makeStimulus(number, ['2', '3'], correctKey, 'digit'));
+    }
 
     (async () => {
         await jsPsych.run([
@@ -386,12 +382,20 @@
                 images: instruction_images
             },
             generalInstructions,
-            digitsInstructions,
-            ...digitTraining,
+            digitsInstructions
+        ]);
+
+        await digitTrainingLoop();
+
+        await jsPsych.run([
             digitTrainingDone,
             resetTrial,
-            lettersInstructions,
-            ...letterTraining,
+            lettersInstructions
+        ]);
+
+        await letterTrainingLoop();
+
+        await jsPsych.run([
             letterTrainingDone,
             resetTrial,
             lettersDigitsInstructions
@@ -399,8 +403,7 @@
 
         currentPhase = "pre-pre-test";
         while (overallAccuracy <= prePreTestThreshold) {
-            const block = getRandomBlock();
-            const trainingTrials = makeLetterDigitTimelineFromSeries(block);
+            const trainingTrials = makeLetterDigitTimelineFromSeries();
 
             await jsPsych.run(trainingTrials);
 
@@ -433,9 +436,8 @@
         stimulusTime -= 100;
         currentPhase = "pre-test";
         while (overallAccuracy >= 0.01) {
-            const block = getRandomBlock();
             resetDebugInfo();
-            const trials = makeLetterDigitTimelineFromSeries(block);
+            const trials = makeLetterDigitTimelineFromSeries();
 
             await jsPsych.run(trials);
 

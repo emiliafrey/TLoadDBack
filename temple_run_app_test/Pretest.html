@@ -67,7 +67,8 @@
 
     const settings = JSON.parse('{{ test_settings|safe }}');
 
-    let stimulusTime = settings.stimulus_time_duration_pretest;
+    const taskTimeInMinutes = 16;
+    let stimulusTimeInMilliseconds = settings.stimulus_time_duration_pretest;
     const seriesData = JSON.parse('{{ series_data|safe }}');
 
     let digitAccuracy = 0;
@@ -139,7 +140,7 @@
             stimulus: stimulusHTML(content),
             choices: choices,
             response_ends_trial: false,
-            trial_duration: () => stimulusTime,
+            trial_duration: () => stimulusTimeInMilliseconds,
             post_trial_gap: 100,
             on_finish: function (data) {
                 data.correct = data.response === correctResponse;
@@ -327,7 +328,7 @@
     };
 
     async function preTestLoop() {
-        stimulusTime -= 100;
+        stimulusTimeInMilliseconds -= 100;
         updateDebugPretestInfo();
         while (error < 3 && accumulatedError < 5) {
             resetDebugInfo();
@@ -338,19 +339,34 @@
                 accumulatedError++;
             } else {
                 error = 0; // Reset consecutive errors on success
-                stimulusTime -= 100; // Get faster
+                stimulusTimeInMilliseconds -= 100; // Get faster
             }
             if (error >= 3) {
-                pretestHCL = stimulusTime + 100; // Revert to last successful speed
+                pretestHCL = stimulusTimeInMilliseconds + 100; // Revert to last successful speed
                 pretestLCL = pretestHCL * 1.5;
                 break;
             }
             if (accumulatedError >= 5) {
-                pretestHCL = stimulusTime;
+                pretestHCL = stimulusTimeInMilliseconds;
                 pretestLCL = pretestHCL * 1.5;
                 break;
             }
             await jsPsych.run([MESSAGES.pause]);
+        }
+    }
+
+    const blockLength = getRandomBlock().letters.length;
+
+    async function mainTaskLoop() {
+        const stimulusTimeInSeconds = stimulusTimeInMilliseconds / 1000;
+        const taskTimeInSeconds = taskTimeInMinutes * 60;
+        const blockTimeInSeconds = blockLength * 2 * stimulusTimeInSeconds;
+        const repetitions = Math.floor(taskTimeInSeconds / blockTimeInSeconds);
+        for (i = 0; i < repetitions; i++) {
+            resetDebugInfo();
+            const toRun = makeLetterDigitTimelineFromSeries();
+            await jsPsych.run(toRun);
+            console.log("round: " + (i + 1) + "with speed: " + stimulusTimeInMilliseconds + "ms");
         }
     }
 
@@ -377,7 +393,7 @@
     function updateDebugPretestInfo() {
         const box = document.getElementById('debug-pretest');
         if (box) {
-            box.innerText = `Debug Pretest:\nErrors: ${error}\nAccumulated Errors: ${accumulatedError}\nStimulus Duration Time: ${stimulusTime}ms`;
+            box.innerText = `Debug Pretest:\nErrors: ${error}\nAccumulated Errors: ${accumulatedError}\nStimulus Duration Time: ${stimulusTimeInMilliseconds}ms`;
         }
     }
 
@@ -385,7 +401,7 @@
     function makeLetterDigitTimelineFromSeries() {
         const trials = [];
         const block = getRandomBlock();
-        for (let i = 0; i < block.letters.length; i++) {
+        for (let i = 0; i < blockLength; i++) {
             const letter = block.letters[i];
             const expected = block.responses[i] === "1" ? " " : null;
             trials.push(makeStimulus(letter, [' '], expected, 'letter'));
@@ -426,6 +442,7 @@
             resetTrial,
             MESSAGES.pretestInstructions]);
         await preTestLoop();
+        await mainTaskLoop();
         jsPsych.run([MESSAGES.pretestFinished]);
         downloadCSVFromLocalStorage();
         jsPsych.data.reset();

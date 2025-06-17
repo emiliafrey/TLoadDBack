@@ -56,22 +56,9 @@
 <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
 <script src="https://unpkg.com/@jspsych/plugin-preload"></script>
 <script src="https://unpkg.com/@jspsych/plugin-call-function"></script>
+<script src="{% static 'messages.js' %}"></script>
 
 <script>
-    // --- Add this helper function at the top of your script ---
-
-    /**
-     * Creates a visually styled instruction screen that matches the experiment's look.
-     * @param {string} innerHTML - The HTML content to place inside the bordered box.
-     * @returns {string} - The full HTML for the jsPsych stimulus.
-     */
-    function createInstructionScreen(innerHTML) {
-        return `
-        <div class="fullscreen-centered-content instruction-box">
-            ${innerHTML}
-        </div>
-    `;
-    }
 
     const jsPsych = initJsPsych({
         display_element: 'jspsych-target'
@@ -99,6 +86,7 @@
     let accumulatedError = 0;
 
     let currentPhase = null;
+    let pretestHCL = null, pretestLCL = null;
 
     function resetStats() {
         digitAccuracy = 0;
@@ -126,76 +114,18 @@
         }
     };
 
-    const pauseRestartMessage = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: createInstructionScreen(`
-        <p>PAUSE: Let's take a break,</p>`),
-        choices: "ALL_KEYS",
-        trial_duration: 2000, // Or wait for key press
-    };
-
-    const pretestFinishedMessage = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: createInstructionScreen(`
-            <h1>CONGRATULATIONS!</h1>
-            <p>THE PRETEST IS FINISHED</p>`),
-        choices: "NO_KEYS",
-        trial_duration: 6000,
-    }
-
     function saveTrialToLocalStorage(trialData) {
         let allData = JSON.parse(localStorage.getItem('autosave_data')) || [];
         allData.push(trialData);
         localStorage.setItem('autosave_data', JSON.stringify(allData));
     }
 
-    const instruction_images = [
-        '/static/images/pretest/General_Instructions_REMADE.bmp',
-        '/static/images/pretest/Digits_Instructions_REMADE.bmp',
-        '/static/images/pretest/Letters_Instructions_REMADE.bmp',
-        '/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp'
-    ];
-
-    // show each instruction image, wait for 'y' key to continue
-    const generalInstructions = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="/static/images/pretest/General_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        choices: ['y']
-    };
-
-    const digitsInstructions = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="/static/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        choices: ['y'],
-        on_finish: function () {
-            currentPhase = "digit training";
-        }
-    };
-
-    const lettersInstructions = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="/static/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        choices: ['y'],
-        on_finish: function () {
-            currentPhase = "letter training";
-        }
-    };
-
-    const lettersDigitsInstructions = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
-        choices: ['y'],
-        on_finish: function () {
-            currentPhase = "pre-pre-test";
-        }
-    };
 
     const stimulusHTML = content => `
     <div class="fullscreen-centered-content stimulus-display-div">
         ${content}
     </div>
 `;
-
     const blankScreen = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: stimulusHTML(''),
@@ -209,7 +139,7 @@
             stimulus: stimulusHTML(content),
             choices: choices,
             response_ends_trial: false,
-            trial_duration: stimulusTime,
+            trial_duration: () => stimulusTime,
             post_trial_gap: 100,
             on_finish: function (data) {
                 data.correct = data.response === correctResponse;
@@ -303,14 +233,11 @@
         overallAccuracy = 0.65 * letterAccuracy + 0.35 * digitAccuracy;
     }
 
-    const repeatTrainingMessage = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: createInstructionScreen(`<h1>LET'S REPEAT IT!</h1><div class="key-prompt">Press any key to continue.</div>`),
-        choices: "ALL_KEYS",
+    const getRandomBlock = () => {
+        return jsPsych.randomization.sampleWithoutReplacement(seriesData, 1)[0];
     };
 
-
-    const generateNewDigitBlock = () => {
+    const generateDigitBlock = () => {
         const timeline = [];
         for (let i = 0; i < 10; i++) {
             pushRandomNumberStimulus(timeline);
@@ -319,8 +246,7 @@
         return timeline;
     };
 
-        // Generates a fresh block of letter trials from a random series
-    const generateNewLetterBlock = () => {
+    const generateLetterBlock = () => {
         const timeline = [];
         const block = getRandomBlock();
         for (let i = 0; i < block.letters.length; i++) {
@@ -332,8 +258,7 @@
         return timeline;
     };
 
-    // Generates a fresh block of combined letter/digit trials
-    const generateNewCombinedBlock = () => {
+    const generateLetterDigitBlock = () => {
         const timeline = [];
         const block = getRandomBlock();
         for (let i = 0; i < block.letters.length; i++) {
@@ -341,58 +266,93 @@
             const letter = block.letters[i];
             const letterExpected = block.responses[i] === "1" ? " " : null;
             timeline.push(makeStimulus(letter, [' '], letterExpected, 'letter'));
-            pushRandomNumberStimulus(trials);
+            pushRandomNumberStimulus(timeline);
         }
         return timeline;
     };
 
-    const digitTrainingLoop = {
-        timeline: [
-            resetTrial,
-            {timeline: generateNewDigitBlock},
-            {
-                timeline: [repeatTrainingMessage],
-                conditional_function: () => digitAccuracy < accuracyThreshold
+    // This object represents ONE ATTEMPT at the training. It is NOT a loop.
+    const digit_training_block = {
+        // We use a dynamic timeline function to generate fresh trials each time this block runs.
+        timeline: () => {
+            // generateDigitBlock() is your helper function that returns an array of trials.
+            const trials = generateDigitBlock();
+
+            // We tack the "repeat" message onto the end, but it will only show if the
+            // conditional_function is true.
+            const feedback_message = {
+                timeline: [MESSAGES.repeatTraining, resetTrial],
+                conditional_function: () => {
+                    // This condition is checked AFTER the trials have run.
+                    return digitAccuracy < accuracyThreshold;
+                }
+            };
+
+            return [...trials, feedback_message];
+        }
+    };
+
+    async function digitTrainingLoop() {
+        while (digitAccuracy < accuracyThreshold) {
+            resetDebugInfo();
+            const toRun = generateDigitBlock();
+            await jsPsych.run(toRun);
+            if (digitAccuracy < accuracyThreshold) {
+                await jsPsych.run([MESSAGES.repeatTraining]);
             }
-        ],
-        loop_function: () => digitAccuracy < accuracyThreshold
-    };
-
-    const digitTrainingDone = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: createInstructionScreen(`
-            <h1>WELL DONE!</h1>
-            <p>Next, we'll move on with some letters.</p>
-            <div class="key-prompt">Press any key to see the new instructions.</div>`),
-        choices: "ALL_KEYS",
+        }
     };
 
 
-    const letterTrainingLoop = {
-        timeline: [
-            resetTrial,
-            { timeline: generateNewLetterBlock },
-            {
-                timeline: [repeatTrainingMessage],
-                conditional_function: () => letterAccuracy < accuracyThreshold
+    async function letterTrainingLoop() {
+        while (letterAccuracy < accuracyThreshold) {
+            resetDebugInfo();
+            const toRun = generateLetterBlock();
+            await jsPsych.run(toRun);
+            if (letterAccuracy < accuracyThreshold) {
+                await jsPsych.run([MESSAGES.repeatTraining]);
             }
-        ],
-        loop_function: () => letterAccuracy < accuracyThreshold
+        }
     };
 
-
-    const letterTrainingDone = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: createInstructionScreen(`
-            <h1>WELL DONE!</h1>
-            <p>Now, let's do some letters and digits at the same time.</p>
-            <div class="key-prompt">Press any key to see the new instructions.</div>`),
-        choices: "ALL_KEYS",
+    async function letterDigitTrainingLoop() {
+        while (overallAccuracy < accuracyThreshold) {
+            resetDebugInfo();
+            const toRun = generateLetterDigitBlock();
+            await jsPsych.run(toRun);
+            if (overallAccuracy < accuracyThreshold) {
+                await jsPsych.run([MESSAGES.repeatTraining]);
+            }
+        }
     };
 
-    const getRandomBlock = () => {
-        return jsPsych.randomization.sampleWithoutReplacement(seriesData, 1)[0];
-    };
+    async function preTestLoop() {
+        stimulusTime -= 100;
+        updateDebugPretestInfo();
+        while (error < 3 && accumulatedError < 5) {
+            resetDebugInfo();
+            const toRun = makeLetterDigitTimelineFromSeries();
+            await jsPsych.run(toRun);
+            if (overallAccuracy < accuracyThreshold) {
+                error++;
+                accumulatedError++;
+            } else {
+                error = 0; // Reset consecutive errors on success
+                stimulusTime -= 100; // Get faster
+            }
+            if (error >= 3) {
+                pretestHCL = stimulusTime + 100; // Revert to last successful speed
+                pretestLCL = pretestHCL * 1.5;
+                break;
+            }
+            if (accumulatedError >= 5) {
+                pretestHCL = stimulusTime;
+                pretestLCL = pretestHCL * 1.5;
+                break;
+            }
+            await jsPsych.run([MESSAGES.pause]);
+        }
+    }
 
     function updateDebugAccuracy() {
         const debugBox = document.getElementById('debug-accuracy');
@@ -445,130 +405,31 @@
         await jsPsych.run([
             {
                 type: jsPsychPreload,
-                images: instruction_images
+                images: INSTRUCTIONS.instruction_images
             },
-            {
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: createInstructionScreen(`
-            <h1>WELCOME</h1>
-            <div class="key-prompt">Please press any key to see the task instructions.</div>`),
-                choices: "ALL_KEYS",
-            },
-            generalInstructions,
-            digitsInstructions,
-            digitTrainingLoop,
-            digitTrainingDone,
+            MESSAGES.welcome,
+            INSTRUCTIONS.generalInstructions,
+            INSTRUCTIONS.digitsInstructions]);
+        await digitTrainingLoop();
+        await jsPsych.run(
+            [
+                resetTrial,
+                MESSAGES.digitTrainingDone,
+                INSTRUCTIONS.lettersInstructions]);
+        await letterTrainingLoop();
+        await jsPsych.run([
             resetTrial,
-            lettersInstructions,
-            letterTrainingLoop,
-            letterTrainingDone,
+            MESSAGES.letterTrainingDone,
+            INSTRUCTIONS.lettersDigitsInstructions,]);
+        await letterDigitTrainingLoop();
+        await jsPsych.run([
             resetTrial,
-            lettersDigitsInstructions
-        ]);
-
-        while (overallAccuracy <= accuracyThreshold) {
-            const trainingTrials = makeLetterDigitTimelineFromSeries();
-
-            await jsPsych.run(trainingTrials);
-
-            if (overallAccuracy <= accuracyThreshold) {
-                await jsPsych.run(
-                    pauseRestartMessage
-                );
-
-                jsPsych.data.reset();
-                resetDebugInfo();
-            }
-        }
-
-        resetDebugInfo();
-
-        const pretest_instructions = [
-            {
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: createInstructionScreen(`
-            <h1>CONGRATULATIONS!</h1>
-            <p">You are ready to start the Pretest.</p>`),
-                choices: "NO_KEYS",
-                trial_duration: 3000,
-            },
-            {
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: createInstructionScreen(`
-                        <h1>Take a long break first.</h1>
-                        <div class="key-prompt">Press any key when you feel rested and ready to continue.</div>`),
-                choices: "ALL_KEYS",
-            },
-            {
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: createInstructionScreen(`
-                        <h1>PRETEST</h1>
-                        <div class="key-prompt">Press the space bar twice to start.</div>`),
-                choices: [' '],
-                post_trial_gap: 500
-            },
-            {
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: createInstructionScreen(`
-                        <h1>PRETEST</h1>
-                        <div class="key-prompt">Press the space bar twice to start.</div>`),
-                choices: [' '],
-                post_trial_gap: 500,
-                on_finish: () => {
-                    document.body.style.backgroundColor = '';
-                }
-            }
-        ];
-
-        await jsPsych.run(pretest_instructions);
-
-        // actual pretest starts here
-        let pretestHCL = null;
-        let pretestLCL = null;
-
-        // decreasing since they could handle 1500
-        stimulusTime -= 100;
-        currentPhase = "pre-test";
-        while (overallAccuracy >= 0.01) {
-            resetDebugInfo();
-            const trials = makeLetterDigitTimelineFromSeries();
-
-            await jsPsych.run(trials);
-
-            if (overallAccuracy < 0.85) {
-                error++;
-                accumulatedError++;
-
-
-                // Although this value is fixed to 3 in Borragan & Slama,2017, increasing it at 5 might increase the pretest calibration
-                // the subject has had their performance across all tests dip below 85% 3 times. This ends the test. STD is keptat the current value.
-                if (error >= 3) {
-                    pretestHCL = stimulusTime + 100;
-                    pretestLCL = 1.5 * pretestHCL;
-                    await jsPsych.run(pretestFinishedMessage);
-                    break;
-                }
-                if (accumulatedError >= 5) {
-                    pretestHCL = stimulusTime;
-                    pretestLCL = 1.5 * pretestHCL;
-                    await jsPsych.run(pretestFinishedMessage);
-                    break;
-                }
-
-                await jsPsych.run(pauseRestartMessage);
-            } else {
-                stimulusTime -= 100;
-                error = 0;
-
-                await jsPsych.run(pauseRestartMessage);
-            }
-        }
-
-
+            MESSAGES.pretestInstructions]);
+        await preTestLoop();
+        jsPsych.run([MESSAGES.pretestFinished]);
         downloadCSVFromLocalStorage();
         jsPsych.data.reset();
         localStorage.removeItem('autosave_data');
-
     })();
 
 </script>

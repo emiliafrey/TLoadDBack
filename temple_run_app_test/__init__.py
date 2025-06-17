@@ -33,19 +33,10 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    # --- Config fields (from YAML) ---
-    subject_number = models.StringField()
-    age = models.IntegerField()
-    sex = models.StringField(choices=["male", "female"])
-    condition = models.StringField(choices=["HCL", "LCL"])
+    pretest_hcl = models.FloatField(doc="The final HCL value in ms, determined by the pre-test staircase.")
+    pretest_lcl = models.FloatField(doc="The final LCL value in ms (HCL * 1.5).")
 
-    # --- Pretest Results ---
-    pretest_hcl = models.FloatField()
-    pretest_lcl = models.FloatField()
-
-    # Performance log for export/debugging
-    pretest_performance_json = models.LongStringField()
-    pretest_training_log = models.LongStringField()
+    pretest_data = models.LongStringField(doc="A JSON string containing all trial data from the pre-test.")
 
 
 # PAGES
@@ -57,26 +48,11 @@ class Pretest(Page):
             test_settings=json.dumps(test_settings),
         )
 
-    def is_displayed(self):
-        return True
 
-
-class TloadPage(Page):
-    template_name = 'temple_run_app_test/TloadPage.html'
-    live_method = 'store_data'
-
-    @staticmethod
-    def store_data(player, data):
-        import json, statistics
-        trials = [t for t in json.loads(data) if 'correct' in t]
-        player.js_data = data
-        if trials:
-            player.accuracy = sum(t['correct'] for t in trials) / len(trials)
-            rts = [t['rt'] for t in trials if t['rt']]
-            if rts:
-                player.mean_rt = statistics.mean(rts)
+class MainTest(Page):
+    pass
 
 class TempleRunPage(Page):
     pass
 
-page_sequence = [Pretest, TloadPage, TempleRunPage]
+page_sequence = [Pretest, MainTest, TempleRunPage]

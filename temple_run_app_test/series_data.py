@@ -4,6 +4,10 @@ series_data = [
         "letters": list("LAAR"),
         "responses": list("0010"),
     },
+{
+        "letters": list("GRRA"),
+        "responses": list("0010"),
+    },
 
 ]
 # the actual series data used in the pretest

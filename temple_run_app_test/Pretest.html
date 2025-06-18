@@ -272,26 +272,14 @@
         return timeline;
     };
 
-    // This object represents ONE ATTEMPT at the training. It is NOT a loop.
-    const digit_training_block = {
-        // We use a dynamic timeline function to generate fresh trials each time this block runs.
-        timeline: () => {
-            // generateDigitBlock() is your helper function that returns an array of trials.
-            const trials = generateDigitBlock();
-
-            // We tack the "repeat" message onto the end, but it will only show if the
-            // conditional_function is true.
-            const feedback_message = {
-                timeline: [MESSAGES.repeatTraining, resetTrial],
-                conditional_function: () => {
-                    // This condition is checked AFTER the trials have run.
-                    return digitAccuracy < accuracyThreshold;
-                }
-            };
-
-            return [...trials, feedback_message];
+function setTrialPhase(phaseName) {
+    return {
+        type: jsPsychCallFunction,
+        func: function() {
+            currentPhase = phaseName;
         }
     };
+}
 
     async function digitTrainingLoop() {
         while (digitAccuracy < accuracyThreshold) {
@@ -425,24 +413,29 @@
             },
             MESSAGES.welcome,
             INSTRUCTIONS.generalInstructions,
-            INSTRUCTIONS.digitsInstructions]);
+            INSTRUCTIONS.digitsInstructions,
+        setTrialPhase("digit training")]);
         await digitTrainingLoop();
         await jsPsych.run(
             [
                 resetTrial,
                 MESSAGES.digitTrainingDone,
-                INSTRUCTIONS.lettersInstructions]);
+                INSTRUCTIONS.lettersInstructions,
+            setTrialPhase("letter training")]);
         await letterTrainingLoop();
         await jsPsych.run([
             resetTrial,
             MESSAGES.letterTrainingDone,
-            INSTRUCTIONS.lettersDigitsInstructions,]);
+            INSTRUCTIONS.lettersDigitsInstructions,
+        setTrialPhase("letter and digit training")]);
         await letterDigitTrainingLoop();
         await jsPsych.run([
             resetTrial,
-            MESSAGES.pretestInstructions]);
-        await preTestLoop();
-        await mainTaskLoop();
+            MESSAGES.pretestInstructions,
+        setTrialPhase("pretest")]);
+        // await preTestLoop();
+        // await jsPsych.run([setTrialPhase("main task")]);
+        // await mainTaskLoop();
         jsPsych.run([MESSAGES.pretestFinished]);
         downloadCSVFromLocalStorage();
         jsPsych.data.reset();

@@ -76,24 +76,15 @@ const INSTRUCTIONS = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
         choices: ['y'],
-        on_finish: function () {
-            currentPhase = "digit training";
-        }
     },
     lettersInstructions: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`,
         choices: ['y'],
-        on_finish: function () {
-            currentPhase = "letter training";
-        }
     },
     lettersDigitsInstructions: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
         choices: ['y'],
-        on_finish: function () {
-            currentPhase = "pre-pre-test";
-        }
     },
 }

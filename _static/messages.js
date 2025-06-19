@@ -6,27 +6,34 @@ function createInstructionScreen(innerHTML) {
     `;
 }
 
+function createCenteredContent(innerHTML) {
+    return `
+        <div class="fullscreen-centered-content">
+            ${innerHTML}
+        </div>
+    `;
+}
+
 const MESSAGES = {
     welcome: {
                 type: jsPsychHtmlKeyboardResponse,
                 stimulus: createInstructionScreen(`
-            <h1>WELCOME</h1>
+            <h1>WELCOME!</h1>
             <div class="key-prompt">Please press any key to see the task instructions.</div>`),
                 choices: "ALL_KEYS",
             },
     pause: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: createInstructionScreen(`
-        <p>PAUSE: Let's take a break. Press any key to continue. </p>`),
+        <p>Let's take a break. Press any key when you feel rested and ready to continue. </p>`),
         choices: "ALL_KEYS",
     },
     pretestFinished: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: createInstructionScreen(`
             <h1>CONGRATULATIONS!</h1>
-            <p>THE PRETEST IS FINISHED.</p>`),
-        choices: "NO_KEYS",
-        trial_duration: 6000,
+            <p>The pretest is finished. Press any key to continue.</p>`),
+        choices: "ALL_KEYS",
     },
     repeatTraining: {
         type: jsPsychHtmlKeyboardResponse,
@@ -38,7 +45,7 @@ const MESSAGES = {
             type: jsPsychHtmlKeyboardResponse,
             stimulus: createInstructionScreen(`
             <h1>CONGRATULATIONS!</h1>
-            <p">You are ready to start the Pretest. Take a long break first.</p>
+            <p">You are ready to start the pretest. Take a long break first.</p>
                         <div class="key-prompt">Press any key when you feel rested and ready to continue.</div>`),
             choices: "ALL_KEYS",
         },
@@ -58,6 +65,10 @@ const MESSAGES = {
             <div class="key-prompt">Press any key to see the new instructions.</div>`),
         choices: "ALL_KEYS",
     },
+    breakBegin:
+        `
+        <h1>Time for a 15 minute break!.</h1>
+        <p>Please click "Next" to continue.</p>`,
 }
 
 const INSTRUCTIONS = {
@@ -69,22 +80,22 @@ const INSTRUCTIONS = {
     ],
     generalInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="/static/images/pretest/General_Instructions_REMADE.bmp" style="max-width: 100%">`,
+        stimulus: createCenteredContent(`<img src="/static/images/pretest/General_Instructions_REMADE.bmp" style="max-width: 100%">`),
         choices: ['y']
     },
     digitsInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="/static/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
+        stimulus: createCenteredContent(`<img src="/static/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
     lettersInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="/static/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`,
+        stimulus: createCenteredContent(`<img src="/static/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
     lettersDigitsInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`,
+        stimulus: createCenteredContent(`<img src="/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
 }

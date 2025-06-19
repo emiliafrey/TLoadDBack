@@ -1,6 +1,4 @@
-/* 1. CSS RESET & GLOBAL STYLES */
-    /* Removes default browser margins, sets background, and forbids page scrolling. */
-    html, body {
+ html, body {
         margin: 0;
         padding: 0;
         overflow: hidden;
@@ -8,13 +6,9 @@
     }
 
     :root {
-        /* Default is typically 16px. Increase this value to make all 'rem'-based text bigger.
-           Try values like 18px, 20px, or even 24px to see the effect. */
         font-size: 28px;
     }
 
-    /* 2. THE CENTERING HELPER CLASS (THE KEY TO THE FIX) */
-    /* Any element with this class will be perfectly centered on the screen. */
     .fullscreen-centered-content {
         position: fixed; /* Lifts the element out of all containers */
         top: 50%;
@@ -23,8 +17,6 @@
         z-index: 100;
     }
 
-    /* 3. UPDATED INSTRUCTION BOX & STIMULUS STYLES */
-    /* We add the helper class in the JS, and just define the look here. */
     .instruction-box {
         width: 90%;
         max-width: 900px;
@@ -39,6 +31,7 @@
         align-items: center;
         box-sizing: border-box;
         padding: clamp(1.5rem, 4vw, 3rem);
+        text-align: center;
     }
 
     .stimulus-display-div {
@@ -47,16 +40,18 @@
         font-family: Arial, sans-serif;
     }
 
-    /* --- Other styles (no changes needed) --- */
     #debug-accuracy, #debug-feedback, #debug-pretest {
-        z-index: 9999; /* ... a lot of styles */
+        z-index: 9999;
     }
 
-    .instruction-box h1 { /* ... */
+    .instruction-box h1 {
+        align-self: center;
     }
 
-    .instruction-box p { /* ... */
+    .instruction-box p {
+        align-content: center;
     }
 
-    .key-prompt { /* ... */
+    .key-prompt {
+        align-content: center;
     }

@@ -36,23 +36,32 @@ class Player(BasePlayer):
     pretest_hcl = models.FloatField(doc="The final HCL value in ms, determined by the pre-test staircase.")
     pretest_lcl = models.FloatField(doc="The final LCL value in ms (HCL * 1.5).")
 
-    pretest_data = models.LongStringField(doc="A JSON string containing all trial data from the pre-test.")
-
+    digit_training_data = models.LongStringField(blank=True)
+    letter_training_data = models.LongStringField(blank=True)
+    letter_digit_training_data = models.LongStringField(blank=True)
+    pretest_data = models.LongStringField(blank=True)
+    main_task_data = models.LongStringField(blank=True)
 
 # PAGES
 
 class Pretest(Page):
+    form_model = 'player'
+    form_fields = [
+        'pretest_hcl',
+        'pretest_lcl',
+        'digit_training_data',
+        'letter_training_data',
+        'letter_digit_training_data',
+        'pretest_data',
+        # 'main_task_data',
+    ]
     def vars_for_template(self):
         return dict(
             series_data=json.dumps(sd),
             test_settings=json.dumps(test_settings),
         )
 
-
-class MainTest(Page):
-    pass
-
 class TempleRunPage(Page):
     pass
 
-page_sequence = [Pretest, MainTest, TempleRunPage]
+page_sequence = [Pretest, TempleRunPage]

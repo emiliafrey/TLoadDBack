@@ -2,8 +2,18 @@
 <link rel="stylesheet" href="{% static 'global/global.css' %}">
 {% endblock %}
 
-
 {% block content %}
+
+<input type="hidden" name="pretest_hcl" id="id_pretest_hcl"/>
+<input type="hidden" name="pretest_lcl" id="id_pretest_lcl"/>
+<input type="hidden" name="digit_training_data" id="id_digit_training_data"/>
+<input type="hidden" name="letter_training_data" id="id_letter_training_data"/>
+<input type="hidden" name="letter_digit_training_data" id="id_letter_digit_training_data"/>
+<input type="hidden" name="pretest_data" id="id_pretest_data"/>
+<input type="hidden" name="main_task_data" id="id_main_task_data"/>
+
+<div id="final-screen-container" style="display: none; text-align: center"></div>
+<div style="display: none;" id="otree-next-button-container">{{ next_button }}</div>
 
 <div id="jspsych-target"></div>
 <div id="debug-accuracy" style="
@@ -58,390 +68,399 @@
 <script src="https://unpkg.com/@jspsych/plugin-call-function"></script>
 <script src="{% static 'messages.js' %}"></script>
 
+
 <script>
+    /*
+ * =================================================================
+ * EXPERIMENT STRUCTURE
+ * =================================================================
+ * This script is organized into the following sections:
+ *
+ * 1. INITIALIZATION & STATE VARIABLES:
+ * Initializes jsPsych and sets up all global variables that track the state of the experiment (e.g., accuracies, stimulus time).
+ *
+ * 2. CORE HELPER & UI FUNCTIONS:
+ * Small, reusable utility functions for tasks like resetting stats, updating the debug display, and saving data.
+ *
+ * 3. TRIAL & BLOCK GENERATION FUNCTIONS:
+ * Functions that are responsible for creating jsPsych trials and timelines for different parts of the experiment.
+ *
+ * 4. MAIN EXPERIMENT PHASE FUNCTIONS:
+ * The large `async` functions that define the logic for each major phase (e.g., digitTrainingLoop, preTestLoop).
+ *
+ * 5. MAIN EXECUTION BLOCK:
+ * The main `(async)` function that runs the entire experiment from start to finish by calling the phase functions in order.
+ *
+ * =================================================================
+ */
+    document.addEventListener("DOMContentLoaded", function () {
 
-    const jsPsych = initJsPsych({
-        display_element: 'jspsych-target'
-    });
-    localStorage.removeItem('autosave_data');
+        // =============================================================
+        // 1. INITIALIZATION & STATE VARIABLES
+        // =============================================================
 
-    const settings = JSON.parse('{{ test_settings|safe }}');
+        const jsPsych = initJsPsych({
+            display_element: 'jspsych-target'
+        });
 
-    const taskTimeInMinutes = 16;
-    let stimulusTimeInMilliseconds = settings.stimulus_time_duration_pretest;
-    const seriesData = JSON.parse('{{ series_data|safe }}');
+        const settings = JSON.parse('{{ test_settings|safe }}');
+        const seriesData = JSON.parse('{{ series_data|safe }}');
 
-    let digitAccuracy = 0;
-    let letterAccuracy = 0;
-    let overallAccuracy = 0;
-    let correctDigits = 0;
-    let correctHitLetters = 0;
-    let correctRejectLetters = 0;
-    let totalDigits = 0;
-    let totalHitLetters = 0;
-    let totalRejectLetters = 0;
+        const taskTimeInMinutes = 16;
+        let stimulusTimeInMilliseconds = settings.stimulus_time_duration_pretest;
+        const accuracyThreshold = 0.85;
 
-    const accuracyThreshold = 0.85;
+        let digitAccuracy = 0;
+        let letterAccuracy = 0;
+        let overallAccuracy = 0;
+        let correctDigits = 0;
+        let correctTargets = 0;
+        let correctNonTargets = 0;
+        let totalDigits = 0;
+        let totalTargets = 0;
+        let totalNonTargets = 0;
 
-    let error = 0;
-    let accumulatedError = 0;
+        let error = 0;
+        let accumulatedError = 0;
 
-    let currentPhase = null;
-    let pretestHCL = null, pretestLCL = null;
+        let currentPhase = null;
+        let currentPhaseData = [];
+        let pretestHCL = null, pretestLCL = null;
 
-    function resetStats() {
-        digitAccuracy = 0;
-        letterAccuracy = 0;
-        overallAccuracy = 0;
-        correctDigits = 0;
-        correctHitLetters = 0;
-        correctRejectLetters = 0;
-        totalDigits = 0;
-        totalHitLetters = 0;
-        totalRejectLetters = 0;
-    }
+        // =============================================================
+        // 2. CORE HELPER & UI FUNCTIONS
+        // =============================================================
 
-    function resetDebugInfo() {
-        resetStats();
-        updateDebugAccuracy();        // redraw the accuracy box -> 0 %
-        updateDebugFeedback(null);
-        updateDebugPretestInfo();
-    }
-
-    const resetTrial = {
-        type: jsPsychCallFunction,
-        func: () => {
-            resetDebugInfo();
+        function resetStats() {
+            digitAccuracy = 0;
+            letterAccuracy = 0;
+            overallAccuracy = 0;
+            correctDigits = 0;
+            correctTargets = 0;
+            correctNonTargets = 0;
+            totalDigits = 0;
+            totalTargets = 0;
+            totalNonTargets = 0;
         }
-    };
 
-    function saveTrialToLocalStorage(trialData) {
-        let allData = JSON.parse(localStorage.getItem('autosave_data')) || [];
-        allData.push(trialData);
-        localStorage.setItem('autosave_data', JSON.stringify(allData));
-    }
+        function resetDebugInfo() {
+            resetStats();
+            updateDebugAccuracy();
+            updateDebugFeedback(null);
+            updateDebugPretestInfo();
+        }
+
+        function updateDebugAccuracy() {
+            const debugBox = document.getElementById('debug-accuracy');
+            if (debugBox) {
+                debugBox.innerText =
+                    `Debug Accuracy:\nOverall: ${(overallAccuracy * 100).toFixed(2)}%\nLetters: ${(letterAccuracy * 100).toFixed(1)}%\nDigits: ${(digitAccuracy * 100).toFixed(1)}%`;
+            }
+        }
 
 
-    const stimulusHTML = content => `
-    <div class="fullscreen-centered-content stimulus-display-div">
-        ${content}
-    </div>
-`;
-    const blankScreen = {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: stimulusHTML(''),
-        choices: "NO_KEYS",
-        trial_duration: 100
-    };
+        function updateDebugFeedback(isCorrect) {
+            const feedbackBox = document.getElementById('debug-feedback');
+            if (isCorrect === null) {
+                feedbackBox.innerText = 'Debug Feedback: (waiting…)';
+                feedbackBox.style.color = 'navy';
+            } else {
+                feedbackBox.innerText = `Debug Feedback: ${isCorrect ? "✓ Correct" : "✗ Incorrect"}`;
+                feedbackBox.style.color = isCorrect ? 'green' : 'red';
+            }
+        }
 
-    function makeStimulus(content, choices, correctResponse, trialType) {
-        return {
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: stimulusHTML(content),
-            choices: choices,
-            response_ends_trial: false,
-            trial_duration: () => stimulusTimeInMilliseconds,
-            post_trial_gap: 100,
-            on_finish: function (data) {
-                data.correct = data.response === correctResponse;
+        function updateDebugPretestInfo() {
+            const box = document.getElementById('debug-pretest');
+            if (box) {
+                box.innerText = `Debug Pretest:\nErrors: ${error}\nAccumulated Errors: ${accumulatedError}\nStimulus Duration Time: ${stimulusTimeInMilliseconds}ms`;
+            }
+        }
 
-                saveTrialToLocalStorage({
-                    phase: currentPhase,
-                    trial_type: trialType,
-                    stimulus: content,
-                    response: data.response,
-                    correct_response: correctResponse,
-                    correct: data.correct,
-                    digit_accuracy: digitAccuracy,
-                    letter_accuracy: letterAccuracy,
-                    overall_accuracy: overallAccuracy,
-                    rt: data.rt,
-                    timestamp: Date.now()
-                });
-                updateDebugFeedback(data.correct);
-                updateDebugPretestInfo();
-                if (trialType === 'digit') {
-                    recalculateDigitAccuracy(data.correct);
-                } else if (trialType === 'letter') {
-                    recalculateLetterAccuracy(data.correct, data.response === ' ');
-                }
-                updateDebugAccuracy();
+        const resetTrial = {
+            type: jsPsychCallFunction,
+            func: () => {
+                resetDebugInfo();
             }
         };
-    }
 
-    function downloadCSVFromLocalStorage(filename = 'experiment_data.csv') {
-        const data = JSON.parse(localStorage.getItem('autosave_data')) || [];
+        const stimulusHTML = content => `
+            <div class="fullscreen-centered-content stimulus-display-div">
+                ${content}
+            </div>`;
 
-        if (data.length === 0) return;
+        const blankScreen = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: stimulusHTML(''),
+            choices: "NO_KEYS",
+            trial_duration: 100
+        };
 
-        // Build CSV header section from settings
-        const settingsHeader = ['--- Experiment Settings ---'];
-        for (const [key, value] of Object.entries(settings)) {
-            settingsHeader.push(`${key},${value}`);
-        }
-
-        // Leave a blank line before trial data
-        settingsHeader.push('', '--- Trial Data ---');
-
-        // Build data rows
-        const keys = Object.keys(data[0]);
-        const csvRows = [keys.join(",")];
-        for (let row of data) {
-            csvRows.push(keys.map(k => JSON.stringify(row[k] ?? '')).join(","));
-        }
-
-        const csvString = [...settingsHeader, ...csvRows].join("\n");
-        const blob = new Blob([csvString], {type: "text/csv"});
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-
-    function recalculateDigitAccuracy(lastAnswerCorrect) {
-        if (lastAnswerCorrect) {
-            correctDigits++;
-        }
-        totalDigits++;
-        digitAccuracy = correctDigits / totalDigits;
-        overallAccuracy = 0.65 * letterAccuracy + 0.35 * digitAccuracy;
-    }
-
-    function recalculateLetterAccuracy(lastAnswerCorrect, hit) {
-        if (hit) {
-            totalHitLetters++;
+        function recalculateDigitAccuracy(lastAnswerCorrect) {
             if (lastAnswerCorrect) {
-                correctHitLetters++;
+                correctDigits++;
             }
-        } else {
-            totalRejectLetters++;
-            if (lastAnswerCorrect) {
-                correctRejectLetters++;
-            }
+            totalDigits++;
+            digitAccuracy = correctDigits / totalDigits;
+            overallAccuracy = 0.65 * letterAccuracy + 0.35 * digitAccuracy;
         }
 
-        const letterHitAccuracy = totalHitLetters > 0 ? correctHitLetters / totalHitLetters : 0;
-        const letterRejectionAccuracy = totalRejectLetters > 0 ? correctRejectLetters / totalRejectLetters : 0;
-
-        letterAccuracy = 0.65 * letterHitAccuracy + 0.35 * letterRejectionAccuracy;
-        overallAccuracy = 0.65 * letterAccuracy + 0.35 * digitAccuracy;
-    }
-
-    const getRandomBlock = () => {
-        return jsPsych.randomization.sampleWithoutReplacement(seriesData, 1)[0];
-    };
-
-    const generateDigitBlock = () => {
-        const timeline = [];
-        for (let i = 0; i < 10; i++) {
-            pushRandomNumberStimulus(timeline);
-            timeline.push(blankScreen);
-        }
-        return timeline;
-    };
-
-    const generateLetterBlock = () => {
-        const timeline = [];
-        const block = getRandomBlock();
-        for (let i = 0; i < block.letters.length; i++) {
-            const letter = block.letters[i];
-            const expected = block.responses[i] === "1" ? " " : null;
-            timeline.push(makeStimulus(letter, [' '], expected, 'letter'));
-            timeline.push(blankScreen);
-        }
-        return timeline;
-    };
-
-    const generateLetterDigitBlock = () => {
-        const timeline = [];
-        const block = getRandomBlock();
-        for (let i = 0; i < block.letters.length; i++) {
-            // Letter
-            const letter = block.letters[i];
-            const letterExpected = block.responses[i] === "1" ? " " : null;
-            timeline.push(makeStimulus(letter, [' '], letterExpected, 'letter'));
-            pushRandomNumberStimulus(timeline);
-        }
-        return timeline;
-    };
-
-function setTrialPhase(phaseName) {
-    return {
-        type: jsPsychCallFunction,
-        func: function() {
-            currentPhase = phaseName;
-        }
-    };
-}
-
-    async function digitTrainingLoop() {
-        while (digitAccuracy < accuracyThreshold) {
-            resetDebugInfo();
-            const toRun = generateDigitBlock();
-            await jsPsych.run(toRun);
-            if (digitAccuracy < accuracyThreshold) {
-                await jsPsych.run([MESSAGES.repeatTraining]);
-            }
-        }
-    };
-
-
-    async function letterTrainingLoop() {
-        while (letterAccuracy < accuracyThreshold) {
-            resetDebugInfo();
-            const toRun = generateLetterBlock();
-            await jsPsych.run(toRun);
-            if (letterAccuracy < accuracyThreshold) {
-                await jsPsych.run([MESSAGES.repeatTraining]);
-            }
-        }
-    };
-
-    async function letterDigitTrainingLoop() {
-        while (overallAccuracy < accuracyThreshold) {
-            resetDebugInfo();
-            const toRun = generateLetterDigitBlock();
-            await jsPsych.run(toRun);
-            if (overallAccuracy < accuracyThreshold) {
-                await jsPsych.run([MESSAGES.repeatTraining]);
-            }
-        }
-    };
-
-    async function preTestLoop() {
-        stimulusTimeInMilliseconds -= 100;
-        updateDebugPretestInfo();
-        while (error < 3 && accumulatedError < 5) {
-            resetDebugInfo();
-            const toRun = makeLetterDigitTimelineFromSeries();
-            await jsPsych.run(toRun);
-            if (overallAccuracy < accuracyThreshold) {
-                error++;
-                accumulatedError++;
+        function recalculateLetterAccuracy(lastAnswerCorrect, isTarget) {
+            if (isTarget) {
+                totalTargets++;
+                if (lastAnswerCorrect) {
+                    correctTargets++;
+                }
             } else {
-                error = 0; // Reset consecutive errors on success
-                stimulusTimeInMilliseconds -= 100; // Get faster
+                totalNonTargets++;
+                if (lastAnswerCorrect) {
+                    correctNonTargets++;
+                }
             }
-            if (error >= 3) {
-                pretestHCL = stimulusTimeInMilliseconds + 100; // Revert to last successful speed
-                pretestLCL = pretestHCL * 1.5;
-                break;
+
+            const letterTargetAccuracy = totalTargets > 0 ? correctTargets / totalTargets : 0;
+            const letterNonTargetAccuracy = totalNonTargets > 0 ? correctNonTargets / totalNonTargets : 0;
+
+            letterAccuracy = 0.65 * letterTargetAccuracy + 0.35 * letterNonTargetAccuracy;
+            overallAccuracy = 0.65 * letterAccuracy + 0.35 * digitAccuracy;
+        }
+
+        // =============================================================
+        // 3. TRIAL & BLOCK GENERATION FUNCTIONS
+        // =============================================================
+
+        function makeStimulus(content, choices, correctResponse, trialType) {
+            return {
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: stimulusHTML(content),
+                choices: choices,
+                response_ends_trial: false,
+                trial_duration: () => stimulusTimeInMilliseconds,
+                post_trial_gap: 100,
+                on_finish: function (data) {
+                    data.correct = data.response === correctResponse;
+                    currentPhaseData.push({
+                            phase: currentPhase,
+                            trial_type: trialType,
+                            stimulus: content,
+                            response: data.response,
+                            correct_response: correctResponse,
+                            correct: data.correct,
+                            digit_accuracy: digitAccuracy,
+                            letter_accuracy: letterAccuracy,
+                            overall_accuracy: overallAccuracy,
+                            rt: data.rt,
+                            timestamp: Date.now()
+                        }
+                    )
+                    updateDebugFeedback(data.correct);
+                    updateDebugPretestInfo();
+                    if (trialType === 'digit') {
+                        recalculateDigitAccuracy(data.correct);
+                    } else if (trialType === 'letter') {
+                        recalculateLetterAccuracy(data.correct, correctResponse === " ");
+                    }
+                    updateDebugAccuracy();
+                }
+            };
+        }
+
+        const getRandomBlock = () => {
+            return jsPsych.randomization.sampleWithoutReplacement(seriesData, 1)[0];
+        };
+
+        const blockLength = getRandomBlock().letters.length;
+
+
+        const generateDigitBlock = () => {
+            const timeline = [];
+            for (let i = 0; i < 10; i++) {
+                pushRandomNumberStimulus(timeline);
+                timeline.push(blankScreen);
             }
-            if (accumulatedError >= 5) {
-                pretestHCL = stimulusTimeInMilliseconds;
-                pretestLCL = pretestHCL * 1.5;
-                break;
+            return timeline;
+        };
+
+        const generateLetterBlock = () => {
+            const timeline = [];
+            const block = getRandomBlock();
+            for (let i = 0; i < block.letters.length; i++) {
+                const letter = block.letters[i];
+                const expected = block.responses[i] === "1" ? " " : null;
+                timeline.push(makeStimulus(letter, [' '], expected, 'letter'));
+                timeline.push(blankScreen);
             }
-            await jsPsych.run([MESSAGES.pause]);
+            return timeline;
+        };
+
+        const generateLetterDigitBlock = () => {
+            const timeline = [];
+            const block = getRandomBlock();
+            for (let i = 0; i < block.letters.length; i++) {
+                const letter = block.letters[i];
+                const letterExpected = block.responses[i] === "1" ? " " : null;
+                timeline.push(makeStimulus(letter, [' '], letterExpected, 'letter'));
+                pushRandomNumberStimulus(timeline);
+            }
+            return timeline;
+        };
+
+        function setTrialPhase(phaseName) {
+            return {
+                type: jsPsychCallFunction,
+                func: function () {
+                    currentPhase = phaseName;
+                }
+            };
         }
-    }
 
-    const blockLength = getRandomBlock().letters.length;
+        // =============================================================
+        // 4. MAIN EXPERIMENT PHASE FUNCTIONS
+        // =============================================================
 
-    async function mainTaskLoop() {
-        const stimulusTimeInSeconds = stimulusTimeInMilliseconds / 1000;
-        const taskTimeInSeconds = taskTimeInMinutes * 60;
-        const blockTimeInSeconds = blockLength * 2 * stimulusTimeInSeconds;
-        const repetitions = Math.floor(taskTimeInSeconds / blockTimeInSeconds);
-        for (i = 0; i < repetitions; i++) {
-            resetDebugInfo();
-            const toRun = makeLetterDigitTimelineFromSeries();
-            await jsPsych.run(toRun);
-            console.log("round: " + (i + 1) + "with speed: " + stimulusTimeInMilliseconds + "ms");
+        async function digitTrainingLoop() {
+            while (digitAccuracy < accuracyThreshold) {
+                resetDebugInfo();
+                const toRun = generateDigitBlock();
+                await jsPsych.run(toRun);
+                if (digitAccuracy < accuracyThreshold) {
+                    await jsPsych.run([MESSAGES.repeatTraining]);
+                }
+            }
+        };
+
+        async function letterTrainingLoop() {
+            while (letterAccuracy < accuracyThreshold) {
+                resetDebugInfo();
+                const toRun = generateLetterBlock();
+                await jsPsych.run(toRun);
+                if (letterAccuracy < accuracyThreshold) {
+                    await jsPsych.run([MESSAGES.repeatTraining]);
+                }
+            }
+        };
+
+        async function letterDigitTrainingLoop() {
+            while (overallAccuracy < accuracyThreshold) {
+                resetDebugInfo();
+                const toRun = generateLetterDigitBlock();
+                await jsPsych.run(toRun);
+                if (overallAccuracy < accuracyThreshold) {
+                    await jsPsych.run([MESSAGES.repeatTraining]);
+                }
+            }
+        };
+
+        async function preTestLoop() {
+            stimulusTimeInMilliseconds -= 100;
+            updateDebugPretestInfo();
+            while (error < 3 && accumulatedError < 5) {
+                resetDebugInfo();
+                const toRun = generateLetterDigitBlock();
+                await jsPsych.run(toRun);
+                if (overallAccuracy < accuracyThreshold) {
+                    error++;
+                    accumulatedError++;
+                } else {
+                    error = 0;
+                    stimulusTimeInMilliseconds -= 100;
+                }
+                if (error >= 3) {
+                    pretestHCL = stimulusTimeInMilliseconds + 100; // Revert to last successful speed
+                    pretestLCL = pretestHCL * 1.5;
+                    break;
+                }
+                if (accumulatedError >= 5) {
+                    pretestHCL = stimulusTimeInMilliseconds;
+                    pretestLCL = pretestHCL * 1.5;
+                    break;
+                }
+                await jsPsych.run([MESSAGES.pause]);
+            }
         }
-    }
 
-    function updateDebugAccuracy() {
-        const debugBox = document.getElementById('debug-accuracy');
-        if (debugBox) {
-            debugBox.innerText =
-                `Debug Accuracy:\nOverall: ${(overallAccuracy * 100).toFixed(2)}%\nLetters: ${(letterAccuracy * 100).toFixed(1)}%\nDigits: ${(digitAccuracy * 100).toFixed(1)}%`;
+        async function mainTaskLoop() {
+            const stimulusTimeInSeconds = stimulusTimeInMilliseconds / 1000;
+            const taskTimeInSeconds = taskTimeInMinutes * 60;
+            const blockTimeInSeconds = blockLength * 2 * stimulusTimeInSeconds;
+            const repetitions = Math.floor(taskTimeInSeconds / blockTimeInSeconds);
+            for (i = 0; i < repetitions; i++) {
+                resetDebugInfo();
+                const toRun = generateLetterDigitBlock();
+                await jsPsych.run(toRun);
+            }
         }
-    }
 
-
-    function updateDebugFeedback(isCorrect) {
-        const feedbackBox = document.getElementById('debug-feedback');
-        if (isCorrect === null) {
-            feedbackBox.innerText = 'Debug Feedback: (waiting…)';
-            feedbackBox.style.color = 'navy';
-        } else {
-            feedbackBox.innerText = `Debug Feedback: ${isCorrect ? "✓ Correct" : "✗ Incorrect"}`;
-            feedbackBox.style.color = isCorrect ? 'green' : 'red';
+        function pushRandomNumberStimulus(trials) {
+            const number = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 6, 7, 8, 9], 1)[0];
+            const correctKey = number % 2 === 0 ? '2' : '3';
+            trials.push(makeStimulus(number, ['2', '3'], correctKey, 'digit'));
         }
-    }
 
-    function updateDebugPretestInfo() {
-        const box = document.getElementById('debug-pretest');
-        if (box) {
-            box.innerText = `Debug Pretest:\nErrors: ${error}\nAccumulated Errors: ${accumulatedError}\nStimulus Duration Time: ${stimulusTimeInMilliseconds}ms`;
+        function finalizePhase(phaseName) {
+            const inputId = `id_${phaseName}_data`;
+            const inputElement = document.getElementById(inputId);
+            if (inputElement) {
+                inputElement.value = JSON.stringify(currentPhaseData);
+            } else {
+                console.error(`Could not find input element with ID: ${inputId}`);
+            }
+            currentPhaseData = [];
         }
-    }
 
+        // =============================================================
+        // 5. MAIN EXECUTION BLOCK
+        // =============================================================
 
-    function makeLetterDigitTimelineFromSeries() {
-        const trials = [];
-        const block = getRandomBlock();
-        for (let i = 0; i < blockLength; i++) {
-            const letter = block.letters[i];
-            const expected = block.responses[i] === "1" ? " " : null;
-            trials.push(makeStimulus(letter, [' '], expected, 'letter'));
-
-            pushRandomNumberStimulus(trials);
-        }
-        return trials;
-    }
-
-    function pushRandomNumberStimulus(trials) {
-        const number = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 6, 7, 8, 9], 1)[0];
-        const correctKey = number % 2 === 0 ? '2' : '3';
-        trials.push(makeStimulus(number, ['2', '3'], correctKey, 'digit'));
-    }
-
-    (async () => {
-        await jsPsych.run([
-            {
-                type: jsPsychPreload,
-                images: INSTRUCTIONS.instruction_images
-            },
-            MESSAGES.welcome,
-            INSTRUCTIONS.generalInstructions,
-            INSTRUCTIONS.digitsInstructions,
-        setTrialPhase("digit training")]);
-        await digitTrainingLoop();
-        await jsPsych.run(
-            [
+        (async () => {
+            await jsPsych.run([
+                {
+                    type: jsPsychPreload,
+                    images: INSTRUCTIONS.instruction_images
+                },
+                MESSAGES.welcome,
+                INSTRUCTIONS.generalInstructions,
+                INSTRUCTIONS.digitsInstructions,
+                setTrialPhase("digit_training")]);
+            await digitTrainingLoop();
+            finalizePhase('digit_training');
+            await jsPsych.run(
+                [
+                    resetTrial,
+                    MESSAGES.digitTrainingDone,
+                    INSTRUCTIONS.lettersInstructions,
+                    setTrialPhase("letter_training")]);
+            await letterTrainingLoop();
+            finalizePhase('letter_training');
+            await jsPsych.run([
                 resetTrial,
-                MESSAGES.digitTrainingDone,
-                INSTRUCTIONS.lettersInstructions,
-            setTrialPhase("letter training")]);
-        await letterTrainingLoop();
-        await jsPsych.run([
-            resetTrial,
-            MESSAGES.letterTrainingDone,
-            INSTRUCTIONS.lettersDigitsInstructions,
-        setTrialPhase("letter and digit training")]);
-        await letterDigitTrainingLoop();
-        await jsPsych.run([
-            resetTrial,
-            MESSAGES.pretestInstructions,
-        setTrialPhase("pretest")]);
-        // await preTestLoop();
-        // await jsPsych.run([setTrialPhase("main task")]);
-        // await mainTaskLoop();
-        jsPsych.run([MESSAGES.pretestFinished]);
-        downloadCSVFromLocalStorage();
-        jsPsych.data.reset();
-        localStorage.removeItem('autosave_data');
-    })();
-
+                MESSAGES.letterTrainingDone,
+                INSTRUCTIONS.lettersDigitsInstructions,
+                setTrialPhase("letter_digit_training")]);
+            await letterDigitTrainingLoop();
+            finalizePhase('letter_digit_training');
+            await jsPsych.run([
+                resetTrial,
+                MESSAGES.pretestInstructions,
+                setTrialPhase("pretest")]);
+            await preTestLoop();
+            finalizePhase('pretest');
+            await jsPsych.run([setTrialPhase("main_task")]);
+            await jsPsych.run([MESSAGES.pretestFinished]);
+            document.getElementById('id_pretest_hcl').value = pretestHCL;
+            document.getElementById('id_pretest_lcl').value = pretestLCL;
+            // await mainTaskLoop();
+            // finalizePhase('main_task');
+            document.getElementById('jspsych-target').style.display = 'none';
+            const finalScreenContainer = document.getElementById('final-screen-container');
+            finalScreenContainer.className = 'fullscreen-centered-content instruction-box';
+            const oTreeButtonContainer = document.getElementById('otree-next-button-container');
+            finalScreenContainer.innerHTML = MESSAGES.breakBegin;
+            finalScreenContainer.appendChild(oTreeButtonContainer);
+            oTreeButtonContainer.style.display = 'block';
+            finalScreenContainer.style.display = 'block';
+        })();
+    });
 </script>
 
 {% endblock %}

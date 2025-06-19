@@ -10,10 +10,10 @@
     }
 
     .fullscreen-centered-content {
-        position: fixed; /* Lifts the element out of all containers */
+        position: fixed;
         top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%); /* This is the magic for perfect centering */
+        transform: translate(-50%, -50%);
         z-index: 100;
     }
 

@@ -67,7 +67,7 @@ const MESSAGES = {
     },
     breakBegin:
         `
-        <h1>Time for a 15 minute break!.</h1>
+        <h1>Time for a 15 minute game break!</h1>
         <p>Please click "Next" to continue.</p>`,
 }
 

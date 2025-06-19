@@ -1,17 +1,18 @@
-{% block styles %}
-<link rel="stylesheet" href="{% static 'global/global.css' %}">
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Time Load Dual Back Test</title>
+    {% block styles %}
+    <link rel="stylesheet" href="{% static 'global/global.css' %}">
+    {% endblock %}
+</head>
+<body>
+{% load otree static %}
+
 
 {% block content %}
-
-<input type="hidden" name="pretest_hcl" id="id_pretest_hcl"/>
-<input type="hidden" name="pretest_lcl" id="id_pretest_lcl"/>
-<input type="hidden" name="digit_training_data" id="id_digit_training_data"/>
-<input type="hidden" name="letter_training_data" id="id_letter_training_data"/>
-<input type="hidden" name="letter_digit_training_data" id="id_letter_digit_training_data"/>
-<input type="hidden" name="pretest_data" id="id_pretest_data"/>
-<input type="hidden" name="main_task_data" id="id_main_task_data"/>
-
+{% endblock %}
 <div id="final-screen-container" style="display: none; text-align: center"></div>
 <div style="display: none;" id="otree-next-button-container">{{ next_button }}</div>
 
@@ -66,11 +67,11 @@
 <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
 <script src="https://unpkg.com/@jspsych/plugin-preload"></script>
 <script src="https://unpkg.com/@jspsych/plugin-call-function"></script>
-<script src="{% static 'messages.js' %}"></script>
+<script src="{% static 'global/messages.js' %}"></script>
+<script src="{% static 'global/TLoadDBack.js' %}"></script>
 
-
-<script>
-
-</script>
-
+{% block scripts %}
 {% endblock %}
+
+</body>
+</html>

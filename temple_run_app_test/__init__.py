@@ -44,7 +44,7 @@ class Player(BasePlayer):
 
 # PAGES
 
-class Pretest(Page):
+class TrainingAndPretest(Page):
     form_model = 'player'
     form_fields = [
         'pretest_hcl',
@@ -53,7 +53,6 @@ class Pretest(Page):
         'letter_training_data',
         'letter_digit_training_data',
         'pretest_data',
-        # 'main_task_data',
     ]
     def vars_for_template(self):
         return dict(
@@ -64,4 +63,4 @@ class Pretest(Page):
 class TempleRunPage(Page):
     pass
 
-page_sequence = [Pretest, TempleRunPage]
+page_sequence = [TrainingAndPretest, TempleRunPage]

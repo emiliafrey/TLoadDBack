@@ -192,7 +192,7 @@ const getRandomBlock = () => {
 
 const generateDigitBlock = () => {
     const timeline = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < blockLength; i++) {
         pushRandomNumberStimulus(timeline);
         timeline.push(blankScreen);
     }
@@ -202,7 +202,7 @@ const generateDigitBlock = () => {
 const generateLetterBlock = () => {
     const timeline = [];
     const block = getRandomBlock();
-    for (let i = 0; i < block.letters.length; i++) {
+    for (let i = 0; i < blockLength; i++) {
         const letter = block.letters[i];
         const expected = block.responses[i] === "1" ? " " : null;
         timeline.push(makeStimulus(letter, [' '], expected, 'letter'));

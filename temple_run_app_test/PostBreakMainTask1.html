@@ -1,0 +1,22 @@
+{% block styles %}
+<link rel="stylesheet" href="{% static 'global/global.css' %}">
+{% endblock %}
+
+{% block content %}
+<input type="hidden" name="main_task_2_1_data" id="id_main_task_2_1_data"/>
+{% include "temple_run_app_test/TLoadDBackContent.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+          document.addEventListener("DOMContentLoaded", async function () {
+            TLoadDBack.init(
+                JSON.parse('{{ test_settings|safe }}'),
+                JSON.parse('{{ series_data|safe }}'),
+                {{ stimulus_time | safe}}
+            );
+            await TLoadDBack.runMainTask("2_1");
+            TLoadDBack.endPhase(MESSAGES.mainTaskBreak);
+        });
+</script>
+{% endblock %}

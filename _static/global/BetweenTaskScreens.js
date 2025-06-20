@@ -16,23 +16,16 @@ function createCenteredContent(innerHTML) {
 
 const MESSAGES = {
     welcome: {
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: createInstructionScreen(`
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: createInstructionScreen(`
             <h1>WELCOME!</h1>
             <div class="key-prompt">Please press any key to see the task instructions.</div>`),
-                choices: "ALL_KEYS",
-            },
+        choices: "ALL_KEYS",
+    },
     pause: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: createInstructionScreen(`
         <p>Let's take a break. Press any key when you feel rested and ready to continue. </p>`),
-        choices: "ALL_KEYS",
-    },
-    pretestFinished: {
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: createInstructionScreen(`
-            <h1>CONGRATULATIONS!</h1>
-            <p>The pretest is finished. Press any key to continue.</p>`),
         choices: "ALL_KEYS",
     },
     repeatTraining: {
@@ -65,10 +58,27 @@ const MESSAGES = {
             <div class="key-prompt">Press any key to see the new instructions.</div>`),
         choices: "ALL_KEYS",
     },
-    breakBegin:
+    pretestFinished:
         `
-        <h1>Time for a 15 minute game break!</h1>
+        <h1>CONGRATULATIONS! The pretest is finished. You will now continue with the main task.</h1>
+        <p>Please click "Next" to start the main task.</p>`,
+    gameBegin:
+        `
+        <h1>You will now get to play a game as a 15 minute break. The experiment will automatically advance when the game is up.</h1>
+        <p>Please click "Next" to start the game.</p>`,
+    mainTaskBreak:
+        `
+        <h1>Time to answer a questionnaire before continuing the task.</h1>
+        <p>Please click "Next" to start the rest of the task.</p>`,
+    gameCompleted:
+        `
+        <h1>You have completed the game and will now return to the main task.</h1>
+        <p>Please click "Next" to start the main task again.</p>`,
+    mainTaskCompleted:
+        `
+        <h1>You have finished the task!</h1>
         <p>Please click "Next" to continue.</p>`,
+
 }
 
 const INSTRUCTIONS = {
@@ -96,6 +106,21 @@ const INSTRUCTIONS = {
     lettersDigitsInstructions: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: createCenteredContent(`<img src="/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`),
+        choices: ['y'],
+    },
+    mainTaskInstructionsIntro: {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: createCenteredContent(`<img src="/static/images/test/Instructions_1_REMADE.bmp" style="max-width: 100%">`),
+        choices: ['y'],
+    },
+    mainTaskInstructions: {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: createCenteredContent(`<img src="/static/images/test/Instructions_2_REMADE.bmp" style="max-width: 100%">`),
+        choices: ['y'],
+    },
+    mainTaskInstructionsDisclaimer: {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: createCenteredContent(`<img src="/static/images/test/Instructions_3_REMADE.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
 }

@@ -303,11 +303,11 @@ async function preTestLoop() {
     }
 }
 
-async function mainTaskLoop() {
+async function halfOfMainTaskLoop() {
     const stimulusTimeInSeconds = stimulusTimeInMilliseconds / 1000;
     const taskTimeInSeconds = taskTimeInMinutes * 60;
     const blockTimeInSeconds = blockLength * 2 * stimulusTimeInSeconds;
-    const repetitions = Math.floor(taskTimeInSeconds / blockTimeInSeconds);
+    const repetitions = Math.floor(taskTimeInSeconds / blockTimeInSeconds / 2);
     for (i = 0; i < repetitions; i++) {
         resetDebugInfo();
         const toRun = generateLetterDigitBlock();
@@ -381,13 +381,12 @@ const TLoadDBack = {
             setTrialPhase("pretest")]);
         await preTestLoop();
         finalizePhase('pretest');
-        await jsPsych.run([MESSAGES.pretestFinished]);
         document.getElementById('id_pretest_hcl').value = pretestHCL;
         document.getElementById('id_pretest_lcl').value = pretestLCL;
     },
     runMainTask: async function (phaseNumber) {
         currentPhase = `main_task_${phaseNumber}`;
-        await mainTaskLoop();
+        await halfOfMainTaskLoop();
         finalizePhase(`main_task_${phaseNumber}`);
     },
     endPhase: function (finalMessage) {
@@ -400,6 +399,4 @@ const TLoadDBack = {
         oTreeButtonContainer.style.display = 'block';
         finalScreenContainer.style.display = 'block';
     }
-
-
 }

@@ -1,18 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Time Load Dual Back Test</title>
-    {% block styles %}
-    <link rel="stylesheet" href="{% static 'global/global.css' %}">
-    {% endblock %}
-</head>
-<body>
-{% load otree static %}
 
-
-{% block content %}
-{% endblock %}
 <div id="final-screen-container" style="display: none; text-align: center"></div>
 <div style="display: none;" id="otree-next-button-container">{{ next_button }}</div>
 
@@ -62,16 +48,9 @@
     Debug Pretest: (waiting...)
 </div>
 
-
 <script src="https://unpkg.com/jspsych@7.3.0"></script>
 <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
 <script src="https://unpkg.com/@jspsych/plugin-preload"></script>
 <script src="https://unpkg.com/@jspsych/plugin-call-function"></script>
-<script src="{% static 'global/messages.js' %}"></script>
+<script src="{% static 'global/BetweenTaskScreens.js' %}"></script>
 <script src="{% static 'global/TLoadDBack.js' %}"></script>
-
-{% block scripts %}
-{% endblock %}
-
-</body>
-</html>

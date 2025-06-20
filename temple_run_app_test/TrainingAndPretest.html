@@ -1,15 +1,17 @@
-{% extends "templates/TLoadDBackBase.html" %}
-{% load otree static %}
+{% block styles %}
+<link rel="stylesheet" href="{% static 'global/global.css' %}">
+{% endblock %}
 
 {% block content %}
+
 <input type="hidden" name="pretest_hcl" id="id_pretest_hcl"/>
 <input type="hidden" name="pretest_lcl" id="id_pretest_lcl"/>
 <input type="hidden" name="digit_training_data" id="id_digit_training_data"/>
 <input type="hidden" name="letter_training_data" id="id_letter_training_data"/>
 <input type="hidden" name="letter_digit_training_data" id="id_letter_digit_training_data"/>
 <input type="hidden" name="pretest_data" id="id_pretest_data"/>
+{% include "temple_run_app_test/TLoadDBackContent.html" %}
 {% endblock %}
-
 {% block scripts %}
 <script>
           document.addEventListener("DOMContentLoaded", async function () {
@@ -17,8 +19,8 @@
                 JSON.parse('{{ test_settings|safe }}'),
                 JSON.parse('{{ series_data|safe }}')
             );
-            await TLoadDBack.runTrainingAndPretest(MESSAGES.breakBegin);
-            TLoadDBack.endPhase();
+            await TLoadDBack.runTrainingAndPretest();
+            TLoadDBack.endPhase(BetweenTaskScreens.pretestFinished);
         });
 </script>
 {% endblock %}

@@ -1,5 +1,4 @@
-# series data for debugging
-series_data = [
+debuggging_series_data = [
     {
         "letters": list("LAAR"),
         "responses": list("0010"),
@@ -10,9 +9,8 @@ series_data = [
     },
 
 ]
-# the actual series data used in the pretest
 
-actual_series_data = [
+series_data = [
     {
         "letters": list("LAARNNRTEENUNNNPPREETUTRRALLPP"),
         "responses": list("001001000100011010010000100101"),

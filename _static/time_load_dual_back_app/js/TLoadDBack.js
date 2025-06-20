@@ -31,7 +31,7 @@ let jsPsych;
 let settings;
 let seriesData;
 
-const taskTimeInMinutes = 16;
+const taskTimeInMinutes = 6;
 const accuracyThreshold = 0.85;
 let stimulusTimeInMilliseconds;
 let blockLength;
@@ -79,8 +79,7 @@ function resetDebugInfo() {
 function updateDebugAccuracy() {
     const debugBox = document.getElementById('debug-accuracy');
     if (debugBox) {
-        debugBox.innerText =
-            `Debug Accuracy:\nOverall: ${(overallAccuracy * 100).toFixed(2)}%\nLetters: ${(letterAccuracy * 100).toFixed(1)}%\nDigits: ${(digitAccuracy * 100).toFixed(1)}%`;
+        debugBox.innerText = `Debug Accuracy:\nOverall: ${(overallAccuracy * 100).toFixed(2)}%\nLetters: ${(letterAccuracy * 100).toFixed(1)}%\nDigits: ${(digitAccuracy * 100).toFixed(1)}%`;
     }
 }
 
@@ -104,8 +103,7 @@ function updateDebugPretestInfo() {
 }
 
 const resetTrial = {
-    type: jsPsychCallFunction,
-    func: () => {
+    type: jsPsychCallFunction, func: () => {
         resetDebugInfo();
     }
 };
@@ -116,10 +114,7 @@ const stimulusHTML = content => `
             </div>`;
 
 const blankScreen = {
-    type: jsPsychHtmlKeyboardResponse,
-    stimulus: stimulusHTML(''),
-    choices: "NO_KEYS",
-    trial_duration: 100
+    type: jsPsychHtmlKeyboardResponse, stimulus: stimulusHTML(''), choices: "NO_KEYS", trial_duration: 100
 };
 
 function recalculateDigitAccuracy(lastAnswerCorrect) {
@@ -166,19 +161,18 @@ function makeStimulus(content, choices, correctResponse, trialType) {
         on_finish: function (data) {
             data.correct = data.response === correctResponse;
             currentPhaseData.push({
-                    phase: currentPhase,
-                    trial_type: trialType,
-                    stimulus: content,
-                    response: data.response,
-                    correct_response: correctResponse,
-                    correct: data.correct,
-                    digit_accuracy: digitAccuracy,
-                    letter_accuracy: letterAccuracy,
-                    overall_accuracy: overallAccuracy,
-                    rt: data.rt,
-                    timestamp: Date.now()
-                }
-            )
+                phase: currentPhase,
+                trial_type: trialType,
+                stimulus: content,
+                response: data.response,
+                correct_response: correctResponse,
+                correct: data.correct,
+                digit_accuracy: digitAccuracy,
+                letter_accuracy: letterAccuracy,
+                overall_accuracy: overallAccuracy,
+                rt: data.rt,
+                timestamp: Date.now()
+            })
             updateDebugFeedback(data.correct);
             updateDebugPretestInfo();
             if (trialType === 'digit') {
@@ -231,8 +225,7 @@ const generateLetterDigitBlock = () => {
 
 function setTrialPhase(phaseName) {
     return {
-        type: jsPsychCallFunction,
-        func: function () {
+        type: jsPsychCallFunction, func: function () {
             currentPhase = phaseName;
         }
     };
@@ -348,24 +341,23 @@ const TLoadDBack = {
     },
 
     runTrainingAndPretest: async function () {
-        await jsPsych.run([{
-            type: jsPsychPreload,
-            images: INSTRUCTIONS.instruction_images
-        }
-            ,
+        await jsPsych.run([
+            {
+                type: jsPsychPreload,
+                images: INSTRUCTIONS.pretestInstructionImages
+        },
             MESSAGES.welcome,
             INSTRUCTIONS.generalInstructions,
             INSTRUCTIONS.digitsInstructions,
-            setTrialPhase("digit_training")
-        ]);
+            setTrialPhase("digit_training")]);
         await digitTrainingLoop();
         finalizePhase('digit_training');
-        await jsPsych.run(
-            [
-                resetTrial,
-                MESSAGES.digitTrainingDone,
-                INSTRUCTIONS.lettersInstructions,
-                setTrialPhase("letter_training")]);
+
+        await jsPsych.run([
+            resetTrial,
+            MESSAGES.digitTrainingDone,
+            INSTRUCTIONS.lettersInstructions,
+            setTrialPhase("letter_training")]);
         await letterTrainingLoop();
         finalizePhase('letter_training');
         await jsPsych.run([
@@ -375,6 +367,7 @@ const TLoadDBack = {
             setTrialPhase("letter_digit_training")]);
         await letterDigitTrainingLoop();
         finalizePhase('letter_digit_training');
+
         await jsPsych.run([
             resetTrial,
             MESSAGES.pretestInstructions,
@@ -384,11 +377,20 @@ const TLoadDBack = {
         document.getElementById('id_pretest_hcl').value = pretestHCL;
         document.getElementById('id_pretest_lcl').value = pretestLCL;
     },
+
     runMainTask: async function (phaseNumber) {
+        await jsPsych.run([{
+            type: jsPsychPreload,
+            images: INSTRUCTIONS.mainTaskInstructionImages
+        },
+            INSTRUCTIONS.mainTaskIntro,
+            INSTRUCTIONS.mainTaskInstructions,
+            INSTRUCTIONS.mainTaskDisclaimer]);
         currentPhase = `main_task_${phaseNumber}`;
         await halfOfMainTaskLoop();
         finalizePhase(`main_task_${phaseNumber}`);
     },
+
     endPhase: function (finalMessage) {
         document.getElementById('jspsych-target').style.display = 'none';
         const finalScreenContainer = document.getElementById('final-screen-container');

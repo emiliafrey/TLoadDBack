@@ -1,10 +1,10 @@
 {% block styles %}
-<link rel="stylesheet" href="{% static 'global/global.css' %}">
+<link rel="stylesheet" href="{% static 'time_load_dual_back_app/css/global.css' %}">
 {% endblock %}
 
 {% block content %}
-<input type="hidden" name="main_task_2_1_data" id="id_main_task_2_1_data"/>
-{% include "temple_run_app_test/TLoadDBackContent.html" %}
+<input type="hidden" name="main_task_1_1_data" id="id_main_task_1_1_data"/>
+{% include "time_load_dual_back_app/TLoadDBackContent.html" %}
 {% endblock %}
 
 {% block scripts %}
@@ -15,7 +15,7 @@
                 JSON.parse('{{ series_data|safe }}'),
                 {{ stimulus_time | safe}}
             );
-            await TLoadDBack.runMainTask("2_1");
+            await TLoadDBack.runMainTask("1_1");
             TLoadDBack.endPhase(MESSAGES.mainTaskBreak);
         });
 </script>

@@ -14,7 +14,7 @@ with open(SETTINGS_FILE, encoding='utf-8') as f:
 
 
 class C(BaseConstants):
-    NAME_IN_URL = 'temple_run_app_test'
+    NAME_IN_URL = 'time_load_dual_back_app'
     PLAYERS_PER_GROUP = None
     NUM_ROUNDS = 1
     STIMULUS_TIME_DURATION_PRETEST = 1.5
@@ -101,7 +101,7 @@ class PreBreakMainTask2(Page):
             stimulus_time=main_task_stimulus_time
         )
 
-class TempleRun(Page):
+class CasualVideoGame(Page):
     pass
 
 class PostBreakTransition(Page):
@@ -139,4 +139,4 @@ class PostBreakMainTask2(Page):
             stimulus_time=main_task_stimulus_time
         )
 
-page_sequence = [TrainingAndPretest, PreBreakMainTask1, PreBreakMainTask2, TempleRun, PostBreakTransition, PostBreakMainTask1, PostBreakMainTask2]
+page_sequence = [TrainingAndPretest, PreBreakMainTask1, PreBreakMainTask2, CasualVideoGame, PostBreakTransition, PostBreakMainTask1, PostBreakMainTask2]

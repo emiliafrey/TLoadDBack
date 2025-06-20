@@ -60,12 +60,12 @@ const MESSAGES = {
     },
     pretestFinished:
         `
-        <h1>CONGRATULATIONS! The pretest is finished. You will now continue with the main task.</h1>
+        <h1>CONGRATULATIONS! The pretest is finished.</h1>
         <p>Please click "Next" to start the main task.</p>`,
     gameBegin:
         `
-        <h1>You will now get to play a game as a 15 minute break. The experiment will automatically advance when the game is up.</h1>
-        <p>Please click "Next" to start the game.</p>`,
+        <h1>You will now get to play a game as a 15 minute break.</h1>
+        <p>The experiment will automatically advance when the time is up. Please click "Next" to start the game.</p>`,
     mainTaskBreak:
         `
         <h1>Time to answer a questionnaire before continuing the task.</h1>
@@ -82,45 +82,50 @@ const MESSAGES = {
 }
 
 const INSTRUCTIONS = {
-    instruction_images: [
-        '/static/images/pretest/General_Instructions_REMADE.bmp',
-        '/static/images/pretest/Digits_Instructions_REMADE.bmp',
-        '/static/images/pretest/Letters_Instructions_REMADE.bmp',
-        '/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp'
+    pretestInstructionImages: [
+        '/static/time_load_dual_back_app/images/pretest/General_Instructions.bmp',
+        '/static/time_load_dual_back_app/images/pretest/Digits_Instructions.bmp',
+        '/static/time_load_dual_back_app/images/pretest/Letters_Instructions.bmp',
+        '/static/time_load_dual_back_app/images/pretest/Letters_Digits_Instructions.bmp',
+    ],
+    mainTaskInstructionImages: [
+        '/static/time_load_dual_back_app/images/test/Main_Task_Intro.bmp',
+        '/static/time_load_dual_back_app/images/test/Main_Task_Instructions.bmp',
+        '/static/time_load_dual_back_app/images/test/Main_Task_Disclaimer.bmp',
     ],
     generalInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/images/pretest/General_Instructions_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/General_Instructions_REMADE.bmp" style="max-width: 100%">`),
         choices: ['y']
     },
     digitsInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
     lettersInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
     lettersDigitsInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
-    mainTaskInstructionsIntro: {
+    mainTaskIntro: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/images/test/Instructions_1_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/test/Main_Task_Intro.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
     mainTaskInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/images/test/Instructions_2_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/test/Main_Task_Instructions.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
-    mainTaskInstructionsDisclaimer: {
+    mainTaskDisclaimer: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/images/test/Instructions_3_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/test/Main_Task_Disclaimer.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
 }

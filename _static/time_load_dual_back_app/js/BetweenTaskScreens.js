@@ -95,22 +95,22 @@ const INSTRUCTIONS = {
     ],
     generalInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/General_Instructions_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/General_Instructions.bmp" style="max-width: 100%">`),
         choices: ['y']
     },
     digitsInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/Digits_Instructions_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/Digits_Instructions.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
     lettersInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/Letters_Instructions_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/Letters_Instructions.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
     lettersDigitsInstructions: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/Letters_Digits_Instructions_REMADE.bmp" style="max-width: 100%">`),
+        stimulus: createCenteredContent(`<img src="/static/time_load_dual_back_app/images/pretest/Letters_Digits_Instructions.bmp" style="max-width: 100%">`),
         choices: ['y'],
     },
     mainTaskIntro: {

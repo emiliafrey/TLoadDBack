@@ -150,34 +150,39 @@ function recalculateLetterAccuracy(lastAnswerCorrect, isTarget) {
 // 3. TRIAL & BLOCK GENERATION FUNCTIONS
 // =============================================================
 
-function makeStimulus(content, choices, correctResponse, trialType) {
+function makeStimulus(content, choices, correctResponse, stimulusType) {
+    let startTimeStamp;
     return {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: stimulusHTML(content),
         choices: choices,
         response_ends_trial: false,
         trial_duration: () => stimulusTimeInMilliseconds,
-        post_trial_gap: 100,
+        on_load: function () {
+            startTimeStamp = Date.now();
+        },
         on_finish: function (data) {
             data.correct = data.response === correctResponse;
             currentPhaseData.push({
                 phase: currentPhase,
-                trial_type: trialType,
+                stimulus_type: stimulusType,
                 stimulus: content,
                 response: data.response,
                 correct_response: correctResponse,
-                correct: data.correct,
+                was_correct: data.correct,
                 digit_accuracy: digitAccuracy,
                 letter_accuracy: letterAccuracy,
                 overall_accuracy: overallAccuracy,
-                rt: data.rt,
-                timestamp: Date.now()
+                start_time_stamp: startTimeStamp,
+                response_time_stamp: data.response === null ? null : startTimeStamp + data.rt,
+                completed_time_stamp: Date.now(),
+                reaction_time: data.rt,
             })
             updateDebugFeedback(data.correct);
             updateDebugPretestInfo();
-            if (trialType === 'digit') {
+            if (stimulusType === 'digit') {
                 recalculateDigitAccuracy(data.correct);
-            } else if (trialType === 'letter') {
+            } else if (stimulusType === 'letter') {
                 recalculateLetterAccuracy(data.correct, correctResponse === " ");
             }
             updateDebugAccuracy();

@@ -1,4 +1,4 @@
-debuggging_series_data = [
+debugging_series_data = [
     {
         "letters": list("LAAR"),
         "responses": list("0010"),

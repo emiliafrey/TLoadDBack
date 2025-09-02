@@ -18,66 +18,96 @@ const MESSAGES = {
     welcome: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: createInstructionScreen(`
-            <h1>WELCOME!</h1>
-            <div class="key-prompt">Please press any key to see the task instructions.</div>`),
-        choices: "ALL_KEYS",
+            <p>You have now completed the setup and initial questionnaires and will now receive instructions and training for the main task. 
+            Please make sure that you are in full screen (F11). From now on, please refrain from reloading the page or clicking outside of the current page, unless you are asked to do so.
+            You must reach an accuracy of 85% in each training to reach the next level. Note that that the training performance does not yet affect your payout, 
+            this is just to learn how the task works.</p>
+            <div class="key-prompt">Please press Y to see the task instructions.</div>`),
+        choices: 'y',
     },
     pause: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: createInstructionScreen(`
-        <p>Let's take a break. Press any key when you feel rested and ready to continue. </p>`),
-        choices: "ALL_KEYS",
+        <p>Let's take a break. Press Y when you feel rested and ready to continue. </p>`),
+        choices: 'y',
     },
     repeatTraining: {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: createInstructionScreen(`<h1>LET'S REPEAT IT!</h1><div class="key-prompt">Press any key to continue.</div>`),
-        choices: "ALL_KEYS",
+        stimulus: createInstructionScreen(`<h1>LET'S REPEAT IT!</h1>
+<div class="key-prompt">You need to reach 85% accuracy to continue. 
+Press Y to continue.</div>`),
+        choices: 'y',
     },
     pretestInstructions:
         {
             type: jsPsychHtmlKeyboardResponse,
             stimulus: createInstructionScreen(`
             <h1>CONGRATULATIONS!</h1>
-            <p">You are ready to start the pretest. Take a long break first.</p>
-                        <div class="key-prompt">Press any key when you feel rested and ready to continue.</div>`),
-            choices: "ALL_KEYS",
+            <p>You have completed the training and are ready to start the pretest. 
+                In the pretest, we will use an algorithm to determine your ideal speed for the main task. 
+                Feel free to take a break first, so that you can give your best!</p>
+                        <div class="key-prompt">Press Y when you feel rested and ready to continue.</div>`),
+            choices: 'y',
         },
     digitTrainingDone: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: createInstructionScreen(`
             <h1>WELL DONE!</h1>
             <p>Next, we'll move on with some letters.</p>
-            <div class="key-prompt">Press any key to see the new instructions.</div>`),
-        choices: "ALL_KEYS",
+            <div class="key-prompt">Press Y to see the new instructions.</div>`),
+        choices: 'y',
     },
     letterTrainingDone: {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: createInstructionScreen(`
             <h1>WELL DONE!</h1>
-            <p>Now, let's do some letters and digits at the same time.</p>
-            <div class="key-prompt">Press any key to see the new instructions.</div>`),
-        choices: "ALL_KEYS",
+            <p>Now, let's do some letters and digits at the same time. 
+            The overall accuracy will be determined by a formula containing the digit and letter accuracy.
+            Don't worry about it, just do your best to reach 85% overall accuracy.</p>
+            <div class="key-prompt">Press Y to see the new instructions.</div>`),
+        choices: 'y',
     },
+    mainTaskBeginning: {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: createInstructionScreen(
+            `
+        <p>You will now see the instructions again. If you remember what to do, feel free to skip through them. </p>
+        <div class="key-prompt">Press Y to continue.</div>`),
+        choices: 'y',
+    },
+    betweenMainTaskScreens: {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: createInstructionScreen(`<p>Loading the next round...</p>`),
+        choices: "NO_KEYS",
+        trial_duration: 5000
+    },
+
     pretestFinished:
         `
         <h1>CONGRATULATIONS! The pretest is finished.</h1>
-        <p>Please click "Next" to start the main task.</p>`,
+        <p>You will now continue with the main task. 
+        From now on, the achieved task accuracy will affect your payout. 
+        Please click "Next" to start the main task.</p>`,
     gameBegin:
         `
-        <h1>You will now get to play a game as a 15 minute break.</h1>
-        <p>The experiment will automatically advance when the time is up. Please click "Next" to start the game.</p>`,
+        <h1>Task Block 1 is finished!</h1>
+        <p>Now, there will be some questions and then you get to play a game as a 10 minute break. 
+        Some buttons are disabled so that you do not leave the page. At the start of the game, you are told to press the spacebar, but this is incorrect: you must click on the game screen.
+        The experiment will automatically advance when the time is up. 
+        Please click "Next" to advance to the questions.</p>`,
     mainTaskBreak:
         `
-        <h1>Time to answer a questionnaire before continuing the task.</h1>
-        <p>Please click "Next" to start the rest of the task.</p>`,
+        <h1>Please answer some questions before continuing the task.</h1>
+        <p>Please click "Next" to to advance to the questions.</p>`,
     gameCompleted:
         `
-        <h1>You have completed the game and will now return to the main task.</h1>
+        <h1>You will now return to the main task.</h1>
         <p>Please click "Next" to start the main task again.</p>`,
     mainTaskCompleted:
         `
         <h1>You have finished the task!</h1>
         <p>Please click "Next" to continue.</p>`,
+
 
 }
 

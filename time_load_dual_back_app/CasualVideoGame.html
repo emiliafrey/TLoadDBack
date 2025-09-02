@@ -1,15 +1,24 @@
 {% load otree static %}
 
+{% block styles %}
+<link rel="stylesheet" href="{% static 'time_load_dual_back_app/css/global.css' %}">
+{% endblock %}
+
 {% block content %}
-    <iframe src="https://ad-freegames.github.io/subway-surfers/bali.html" width="1050px" height="720px" frameborder="0" allowfullscreen></iframe>
+<iframe id="game-iframe"
+        src="https://ad-freegames.github.io/subway-surfers/seoul.html"
+        allowfullscreen
+        sandbox="allow-scripts allow-same-origin">
+</iframe>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const gameDurationInMilliseconds = 60000;
+    document.addEventListener("DOMContentLoaded", function () {
+        // 15 minutes = 900,000 milliseconds
+        const gameDurationInMilliseconds = 900000;
 
-        setTimeout(function() {
+        setTimeout(function () {
             const form = document.getElementById('form');
 
             if (form) {

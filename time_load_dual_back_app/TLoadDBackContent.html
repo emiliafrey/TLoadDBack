@@ -3,24 +3,10 @@
 <div style="display: none;" id="otree-next-button-container">{{ next_button }}</div>
 
 <div id="jspsych-target"></div>
-<div id="debug-accuracy" style="
-  position: fixed;
-  top: 10px;
-  right: 20px;
-  background-color: rgba(255,255,255,0.9);
-  padding: 8px 12px;
-  border: 1px solid #aaa;
-  border-radius: 5px;
-  font-weight: bold;
-  color: darkred;
-  z-index: 9999;
-">
-    Debug Accuracy: (waiting...)
-</div>
 
-<div id="debug-feedback" style="
-  position: fixed;
-  top: 210px;
+<div id="last-response-feedback" style="
+   position: fixed;
+  top: 10px;
   right: 20px;
   background-color: rgba(255,255,255,0.9);
   padding: 8px 12px;
@@ -30,10 +16,26 @@
   color: navy;
   z-index: 9999;
 ">
-    Debug Feedback: (waiting...)
+    Last response was: (waiting...)
 </div>
 
-<div id="debug-pretest" style="
+<div id="accuracy" style="
+position: fixed;
+  top: 90px;
+  right: 20px;
+  background-color: rgba(255,255,255,0.9);
+  padding: 8px 12px;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+  font-weight: bold;
+  color: darkred;
+  z-index: 9999;
+">
+    Accuracy: (waiting...)
+</div>
+
+<!-- remove hidden attribute to show debug info for pretest (errors, accumulated errors, stimulus duration time -->
+<div id="pretest-info" hidden style="
   position: fixed;
   top: 280px;
   right: 20px;
@@ -45,7 +47,7 @@
   color: darkgreen;
   z-index: 9999;
 ">
-    Debug Pretest: (waiting...)
+    Pretest info: (waiting...)
 </div>
 
 <script src="https://unpkg.com/jspsych@7.3.0"></script>

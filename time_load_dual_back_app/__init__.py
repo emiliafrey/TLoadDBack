@@ -1,5 +1,3 @@
-import json
-
 from otree.api import *
 from .series_data import series_data as sd
 from pathlib import Path
